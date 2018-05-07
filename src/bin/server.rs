@@ -10,7 +10,7 @@ extern crate clap;
 use clap::{Arg, App};
 
 extern crate ws;
-use ws::{listen, Message, Sender as WSSender, Handler, CloseCode};
+use ws::{listen, Message, Sender as WSSender, Handler, CloseCode, Handshake};
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
@@ -40,16 +40,12 @@ use mech::database::Database;
 
 // ## Client Handler
 
-//-------------------------------------------------------------------------
-// Websocket client handler
-//-------------------------------------------------------------------------
-
-//#[derive(Serialize, Deserialize, Debug)]
-/*pub enum ClientMessage {
-    Block { id:String, code:String },
-    RemoveBlock { id:String },
-    Transaction { client:String, adds: Vec<(JSONInternable, JSONInternable, JSONInternable)>, removes: Vec<(JSONInternable, JSONInternable, JSONInternable)> },
-}*/
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ClientMessage {
+    Block { id: String, code: String },
+    RemoveBlock { id: String },
+    Transaction { adds: Vec<u64>, removes: Vec<u64> },
+}
 
 pub struct ClientHandler {
   out: WSSender,
@@ -57,28 +53,51 @@ pub struct ClientHandler {
 }
 
 impl ClientHandler {
-  pub fn new(client_name: &str, out:WSSender) -> ClientHandler {
+  pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
     ClientHandler {out, client_name: client_name.to_owned()}
   }
 }
 
 impl Handler for ClientHandler {
 
-    fn on_request(&mut self, req: &ws::Request) -> Result<ws::Response,ws::Error> {
-      println!("Handler received request:\n{:?}", req);
-      ws::Response::from_request(req)
-    }
-
-    fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
-      println!("Server got message '{}'. ", msg);
+    fn on_open(&mut self, handshake: Handshake) -> Result<(),ws::Error> {
+      self.out.send("Ping");
       Ok(())
     }
 
-    fn on_close(&mut self, code: CloseCode, reason: &str) {
-      println!("WebSocket closing for ({:?}) {}", code, reason);
-      //self.router.lock().unwrap().unregister(&self.client_name);
-      //self.running.close();
+  fn on_request(&mut self, req: &ws::Request) -> Result<ws::Response, ws::Error> {
+    println!("Handler received request:\n{:?}", req);
+    ws::Response::from_request(req)
+  }
+
+
+ fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
+    println!("Server got message '{}'. ", msg);
+    if let Message::Text(s) = msg {
+      let deserialized: Result<ClientMessage, Error> = serde_json::from_str(&s);
+      println!("deserialized = {:?}", deserialized);
+      match deserialized {
+          Ok(ClientMessage::Transaction { adds, removes }) => {
+            println!("Txn: {:?} {:?}", adds, removes);
+          }
+          Ok(m) => {
+            println!("{:?}", m);
+          }
+          k => { 
+            println!("something else is going on here.");
+          }
+        }
+        Ok(())
+    } else {
+      Ok(())
     }
+  }
+
+  fn on_close(&mut self, code: CloseCode, reason: &str) {
+    println!("WebSocket closing for ({:?}) {}", code, reason);
+    //self.router.lock().unwrap().unregister(&self.client_name);
+    //self.running.close();
+  }
 }
 
 // ## Static File Server
@@ -102,8 +121,8 @@ fn http_server(address: String) -> std::thread::JoinHandle<()> {
 
     println!("{} HTTP Server at {}... ", BrightGreen.paint("Starting:"), address);
     match Iron::new(chain).http(&address) {
-        Ok(_) => {},
-        Err(why) => println!("{} Failed to start HTTP Server: {}", BrightRed.paint("Error:"), why),
+      Ok(_) => {},
+      Err(why) => println!("{} Failed to start HTTP Server: {}", BrightRed.paint("Error:"), why),
     };
   })
 }
@@ -111,17 +130,17 @@ fn http_server(address: String) -> std::thread::JoinHandle<()> {
 // ## Websocket Connection
 
 fn websocket_server(address: String) {
-    println!("{} Websocket Server at {}... ", BrightGreen.paint("Starting:"), address);
-    let mut ix = 0;
-    
-    match listen(address, |out| {
-        ix += 1;
-        let client_name = format!("ws_client_{}", ix);
-        ClientHandler::new(&client_name, out) 
-    }) {
-        Ok(_) => {},
-        Err(why) => println!("{} Failed to start Websocket Server: {}", BrightRed.paint("Error:"), why),
-    };
+  println!("{} Websocket Server at {}... ", BrightGreen.paint("Starting:"), address);
+  let mut ix = 0;
+  
+  match listen(address, |out| {
+    ix += 1;
+    let client_name = format!("ws_client_{}", ix);
+    ClientHandler::new(&client_name, out) 
+  }) {
+    Ok(_) => {},
+    Err(why) => println!("{} Failed to start Websocket Server: {}", BrightRed.paint("Error:"), why),
+  };
 }
 
 // ## Server Entry
@@ -151,8 +170,6 @@ fn main() {
       .help("Sets the address of the server (127.0.0.1)")
       .takes_value(true))
     .get_matches();
-
-  println!("");
 
   let wport = matches.value_of("port").unwrap_or("3012");
   let hport = matches.value_of("http-port").unwrap_or("8081");
