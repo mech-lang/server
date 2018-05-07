@@ -4,7 +4,15 @@ version = "0.1.0"
 authors = ["Corey Montella <cmontella@live.com>"]
 
 [dependencies]
-time = "*"
-rand = "*"
+time = "0.1.39"
+rand = "0.4.2"
 iron = "0.6.0"
+clap = "2.31.2"
+term-painter = "0.2.4"
+staticfile = "0.5"
+mount = "0.4"
+ws = "0.7.6"
+serde = "1.0.46"
+serde_derive = "1.0.46"
+serde_json = "1.0.17"
 mech = {git = "https://gitlab.com/cmontella/mech.git"}
