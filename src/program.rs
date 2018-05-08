@@ -40,6 +40,7 @@ extern crate time;
 use std::sync::mpsc::{Sender, Receiver, SendError};
 use std::thread::{self, JoinHandle};
 use std::sync::mpsc;
+use std::collections::{HashMap, HashSet, Bound, BTreeMap};
 
 use mech::database::{Database, Transaction, Change};
 use mech::table::{Value};
@@ -48,11 +49,15 @@ extern crate term_painter;
 use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 
+use watchers::{Watcher};
+
+
 // ## Program
 
 pub struct Program {
   pub name: String,
   pub mech: Database,
+  watchers: HashMap<String, Box<Watcher + Send>>,
   pub incoming: Receiver<RunLoopMessage>,
   pub outgoing: Sender<RunLoopMessage>,
 }
@@ -69,10 +74,22 @@ impl Program {
     Program { 
       name: name.to_owned(), 
       mech: db,
+      watchers: HashMap::new(),
       incoming, 
       outgoing 
     }
   }
+
+  pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
+      let name = watcher.get_name();
+      println!("{} {} {}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
+      self.watchers.insert(name, watcher);
+  }
+
+  pub fn colored_name(&self) -> term_painter::Painted<String> {
+    BrightCyan.paint(format!("[{}]", &self.name))
+  }
+
 }
 
 // ## Run Loop
@@ -115,7 +132,7 @@ impl RunLoop {
 
 pub struct ProgramRunner {
   pub name: String,
-  pub program: Program,
+  pub program: Program,  
 }
 
 impl ProgramRunner {
@@ -130,13 +147,12 @@ impl ProgramRunner {
     let outgoing = self.program.outgoing.clone();
     let mut program = self.program;
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
-      let colored_name = BrightCyan.paint(format!("[{}]", &program.name));
-      println!("{} Starting run loop.", &colored_name);
+      println!("{} Starting run loop.", &program.colored_name());
       let mut paused = false;
       'outer: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(v)), false) => {
-            println!("{} Txn started", &colored_name);
+            println!("{} Txn started", &program.colored_name());
             let mut changes = vec![];
             for (table, row, col, value) in v {
               changes.push(Change::Add{table, row, column: col, value: Value::from_u64(value)})
@@ -147,7 +163,7 @@ impl ProgramRunner {
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
             println!("{:?}", program.mech);
-            println!("{} Txn took {:0.4?} ms", &colored_name, time / 1_000_000.0);
+            println!("{} Txn took {:0.4?} ms", &program.colored_name(), time / 1_000_000.0);
           },
           (Ok(m), _) => println!("{:?}", m),
           _ => (),

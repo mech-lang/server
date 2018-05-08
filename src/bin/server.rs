@@ -46,6 +46,7 @@ use mech::table::Value;
 
 extern crate mech_server;
 use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
+use mech_server::watchers::system::{SystemTimerWatcher};
 
 // ## Client Handler
 
@@ -66,6 +67,7 @@ impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
     let mut runner = ProgramRunner::new(client_name);
     let outgoing = runner.program.outgoing.clone();
+    runner.program.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
