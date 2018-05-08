@@ -37,6 +37,7 @@ use self::term_painter::Color::*;
 
 extern crate mech;
 use mech::database::Database;
+use mech::table::Value;
 
 // ## Client Handler
 
@@ -61,12 +62,14 @@ impl ClientHandler {
 impl Handler for ClientHandler {
 
     fn on_open(&mut self, handshake: Handshake) -> Result<(),ws::Error> {
-      self.out.send("Ping");
       Ok(())
     }
 
   fn on_request(&mut self, req: &ws::Request) -> Result<ws::Response, ws::Error> {
     println!("Handler received request:\n{:?}", req);
+    let message = ClientMessage::Transaction{adds: vec![6, 7, 8], removes: vec![10, 11, 12, 13]};
+    let serialized = serde_json::to_string(&message).unwrap();
+    self.out.send(serialized);
     ws::Response::from_request(req)
   }
 
@@ -79,12 +82,18 @@ impl Handler for ClientHandler {
       match deserialized {
           Ok(ClientMessage::Transaction { adds, removes }) => {
             println!("Txn: {:?} {:?}", adds, removes);
+            for add in adds {
+              println!("Add: {:?}", add);
+            }
+            for remove in removes {
+              println!("Remove: {:?}", remove);
+            }
           }
           Ok(m) => {
-            println!("{:?}", m);
+            println!("Unhandled Websocket Message: {:?}", m);
           }
-          k => { 
-            println!("something else is going on here.");
+          Err(error) => { 
+            println!("Error: {:?}", error);
           }
         }
         Ok(())
