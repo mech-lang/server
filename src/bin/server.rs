@@ -39,23 +39,30 @@ extern crate mech;
 use mech::database::Database;
 use mech::table::Value;
 
+extern crate mech_server;
+use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
+
 // ## Client Handler
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
     Block { id: String, code: String },
     RemoveBlock { id: String },
-    Transaction { adds: Vec<u64>, removes: Vec<u64> },
+    Transaction { adds: Vec<(u64, u64, u64, u64)>, removes: Vec<(u64, u64, u64, u64)> },
 }
 
 pub struct ClientHandler {
-  out: WSSender,
   client_name: String,
+  out: WSSender,
+  running: RunLoop,
 }
 
 impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
-    ClientHandler {out, client_name: client_name.to_owned()}
+    let mut runner = ProgramRunner::new(client_name);
+    let outgoing = runner.program.outgoing.clone();
+    let running = runner.run();
+    ClientHandler {client_name: client_name.to_owned(), out, running}
   }
 }
 
@@ -67,9 +74,12 @@ impl Handler for ClientHandler {
 
   fn on_request(&mut self, req: &ws::Request) -> Result<ws::Response, ws::Error> {
     println!("Handler received request:\n{:?}", req);
-    let message = ClientMessage::Transaction{adds: vec![6, 7, 8], removes: vec![10, 11, 12, 13]};
+    let message = ClientMessage::Transaction{
+      adds: vec![(6, 7, 8, 9)], 
+      removes: vec![(10, 11, 12, 13)]
+    };
     let serialized = serde_json::to_string(&message).unwrap();
-    self.out.send(serialized);
+    //self.out.send(serialized);
     ws::Response::from_request(req)
   }
 
@@ -82,9 +92,8 @@ impl Handler for ClientHandler {
       match deserialized {
           Ok(ClientMessage::Transaction { adds, removes }) => {
             println!("Txn: {:?} {:?}", adds, removes);
-            for add in adds {
-              println!("Add: {:?}", add);
-            }
+            self.running.send(RunLoopMessage::Transaction(adds));
+            
             for remove in removes {
               println!("Remove: {:?}", remove);
             }
