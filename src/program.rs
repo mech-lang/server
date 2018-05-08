@@ -65,7 +65,7 @@ pub struct Program {
 impl Program {
   pub fn new(name:&str) -> Program {
     let (outgoing, incoming) = mpsc::channel();
-    let mut db = Database::new(1000, 2);
+    let mut db = Database::new(100000, 2);
     let mut table_changes = vec![
       Change::NewTable{tag: 1, rows: 2, columns: 4}, 
     ];
@@ -82,7 +82,7 @@ impl Program {
 
   pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
       let name = watcher.get_name();
-      println!("{} {} {}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
+      println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
       self.watchers.insert(name, watcher);
   }
 
@@ -99,7 +99,7 @@ pub enum RunLoopMessage {
   Stop,
   Pause,
   Resume,
-  Transaction(Vec<(u64, u64, u64, u64)>),
+  Transaction(Transaction),
 }
 
 pub struct RunLoop {
@@ -151,13 +151,8 @@ impl ProgramRunner {
       let mut paused = false;
       'outer: loop {
         match (program.incoming.recv(), paused) {
-          (Ok(RunLoopMessage::Transaction(v)), false) => {
+          (Ok(RunLoopMessage::Transaction(txn)), false) => {
             println!("{} Txn started", &program.colored_name());
-            let mut changes = vec![];
-            for (table, row, col, value) in v {
-              changes.push(Change::Add{table, row, column: col, value: Value::from_u64(value)})
-            }    
-            let txn = Transaction::from_changeset(changes);
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
             let end_ns = time::precise_time_ns();

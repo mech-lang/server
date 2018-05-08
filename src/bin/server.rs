@@ -81,11 +81,11 @@ impl Handler for ClientHandler {
 
   fn on_request(&mut self, req: &ws::Request) -> Result<ws::Response, ws::Error> {
     println!("Handler received request:\n{:?}", req);
-    let message = ClientMessage::Transaction{
+    /*let message = ClientMessage::Transaction{
       adds: vec![(6, 7, 8, 9)], 
       removes: vec![(10, 11, 12, 13)]
-    };
-    let serialized = serde_json::to_string(&message).unwrap();
+    };*/
+    //let serialized = serde_json::to_string(&message).unwrap();
     //self.out.send(serialized);
     ws::Response::from_request(req)
   }
@@ -99,7 +99,7 @@ impl Handler for ClientHandler {
       match deserialized {
           Ok(ClientMessage::Transaction { adds, removes }) => {
             println!("Txn: {:?} {:?}", adds, removes);
-            self.running.send(RunLoopMessage::Transaction(adds));
+            //self.running.send(RunLoopMessage::Transaction(adds));
             
             for remove in removes {
               println!("Remove: {:?}", remove);
