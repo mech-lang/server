@@ -1,5 +1,10 @@
 // # Mech Server
 
+/*
+ Mech Server is a wrapper around the mech runtime. It provides interfaces for 
+ controlling the runtime, sending it transactions, and responding to changes.
+*/
+
 // ## Prelude
 
 extern crate core;
@@ -133,6 +138,7 @@ fn http_server(address: String) -> std::thread::JoinHandle<()> {
     let mut mount = Mount::new();
     mount.mount("/", Static::new(Path::new("assets/index.html")));
     mount.mount("/assets/", Static::new(Path::new("assets/")));
+    mount.mount("/dist/", Static::new(Path::new("dist/")));
 
     let mut chain = Chain::new(mount);
     chain.link_after(Custom404);
