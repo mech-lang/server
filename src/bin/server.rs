@@ -44,11 +44,16 @@ extern crate mech;
 use mech::database::{Database, Change, Transaction};
 use mech::table::Value;
 use mech::indexes::{TableIndex, Hasher};
+use mech::runtime::{Block, Constraint};
+use mech::operations::Function;
 
 extern crate mech_server;
 use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
 use mech_server::watchers::system::{SystemTimerWatcher};
 use mech_server::watchers::websocket::{WebsocketClientWatcher};
+
+extern crate rand;
+use rand::{Rng, thread_rng};
 
 // ## Client Handler
 
@@ -67,19 +72,24 @@ pub struct ClientHandler {
 
 impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
-    let mut runner = ProgramRunner::new(client_name);
+    let mut runner = ProgramRunner::new(client_name, 1000000);
     let outgoing = runner.program.outgoing.clone();
     runner.program.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.program.attach_watcher(Box::new(WebsocketClientWatcher::new(out.clone(), client_name)));
 
+    // Load the bouncing balls program
     let system_timer = Hasher::hash_str("system/timer");
-
-    let txn = Transaction::from_changeset(vec![
+    let ball = Hasher::hash_str("ball");
+    runner.program.mech.runtime.register_blocks(vec![position_update()], &mut runner.program.mech.store);
+    let mut balls = make_balls(100000);
+    let mut txn = Transaction::from_changeset(vec![
       Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
-      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(100)},
+      Change::NewTable{tag: ball, rows: 10, columns: 6}, 
+      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(10)},
     ]); 
-    
+    let txn2 = Transaction::from_changeset(balls);
     outgoing.send(RunLoopMessage::Transaction(txn));
+    outgoing.send(RunLoopMessage::Transaction(txn2));
 
 
 
@@ -224,4 +234,54 @@ fn main() {
 
   http_server(http_address);
   websocket_server(websocket_address);
+}
+
+fn make_balls(n: u64) -> Vec<Change> {
+  let mut v = Vec::new();
+  for i in 0 .. n + 1 {
+
+    let mut rng = thread_rng();
+    let x = rng.gen_range(1, 100);
+    let y = rng.gen_range(1, 100);
+    let dx = rng.gen_range(1, 10);
+    let dy = rng.gen_range(1, 10);
+    let ball = Hasher::hash_str("ball");
+  
+    v.push(Change::Add{table: ball, row: i, column: 1, value: Value::from_u64(x)});
+    v.push(Change::Add{table: ball, row: i, column: 2, value: Value::from_u64(y)});
+    v.push(Change::Add{table: ball, row: i, column: 3, value: Value::from_u64(dx)});
+    v.push(Change::Add{table: ball, row: i, column: 4, value: Value::from_u64(dy)});
+    v.push(Change::Add{table: ball, row: i, column: 5, value: Value::from_u64(16)});
+    v.push(Change::Add{table: ball, row: i, column: 6, value: Value::from_u64(500)});
+  
+  }
+  v
+}
+
+fn position_update() -> Block {
+  let mut block = Block::new();
+  let ball = Hasher::hash_str("ball");
+  let system_timer_change = Hasher::hash_str("system/timer/change");
+  block.add_constraint(Constraint::Scan {table: system_timer_change, column: 4, register: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 1, register: 2});
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, register: 3});
+  block.add_constraint(Constraint::Scan {table: ball, column: 3, register: 4});
+  block.add_constraint(Constraint::Scan {table: ball, column: 4, register: 5});
+  block.add_constraint(Constraint::Scan {table: ball, column: 5, register: 6});
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![2, 4], output: 1});
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![3, 5], output: 2});
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 3});
+  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});
+  block.add_constraint(Constraint::Insert {table: ball, column: 2, register: 2});
+  block.add_constraint(Constraint::Insert {table: ball, column: 4, register: 3});
+  let plan = vec![
+    Constraint::Function {operation: Function::Add, parameters: vec![2, 4], output: 1},
+    Constraint::Function {operation: Function::Subtract, parameters: vec![3, 5], output: 2},
+    Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 3},
+    Constraint::Insert {table: ball, column: 1, register: 1},
+    Constraint::Insert {table: ball, column: 2, register: 2},
+    Constraint::Insert {table: ball, column: 4, register: 3},
+  ];
+  block.plan = plan;
+  block
 }

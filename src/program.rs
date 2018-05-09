@@ -30,9 +30,9 @@ pub struct Program {
 }
 
 impl Program {
-  pub fn new(name:&str) -> Program {
+  pub fn new(name:&str, capacity: usize) -> Program {
     let (outgoing, incoming) = mpsc::channel();
-    let mut db = Database::new(1000, 2);
+    let mut db = Database::new(capacity, 100);
     let mut table_changes = vec![
       Change::NewTable{tag: 1, rows: 2, columns: 4}, 
     ];
@@ -47,8 +47,10 @@ impl Program {
     }
   }
 
+  // TODO Move this out of program and into program runner
   pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
     let name = Hasher::hash_str(&watcher.get_name());
+    
     println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
     self.mech.register_watcher(name);
     self.watchers.insert(name, watcher);
@@ -104,10 +106,10 @@ pub struct ProgramRunner {
 }
 
 impl ProgramRunner {
-  pub fn new(name:&str) -> ProgramRunner {
+  pub fn new(name:&str, capacity: usize) -> ProgramRunner {
     ProgramRunner {
       name: name.to_owned(),
-      program: Program::new(name),
+      program: Program::new(name, capacity),
     }
   }
 
