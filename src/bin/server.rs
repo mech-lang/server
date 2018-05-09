@@ -41,8 +41,9 @@ use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 
 extern crate mech;
-use mech::database::Database;
+use mech::database::{Database, Change, Transaction};
 use mech::table::Value;
+use mech::indexes::{TableIndex, Hasher};
 
 extern crate mech_server;
 use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
@@ -70,6 +71,22 @@ impl ClientHandler {
     let outgoing = runner.program.outgoing.clone();
     runner.program.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.program.attach_watcher(Box::new(WebsocketClientWatcher::new(out.clone(), client_name)));
+
+    let system_timer = Hasher::hash_str("system/timer");
+
+    let txn = Transaction::from_changeset(vec![
+      Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
+      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(100)},
+    ]); 
+    
+    outgoing.send(RunLoopMessage::Transaction(txn));
+
+
+
+
+
+
+
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }

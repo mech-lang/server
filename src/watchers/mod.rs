@@ -3,15 +3,15 @@
 // ## Prelude
 
 extern crate mech;
-use mech::database::Interner;
+use mech::database::{Interner, Change};
 use mech::table::Value;
 
 // ## Watchers
 
 #[derive(Debug)]
 pub struct WatchDiff {
-    pub adds: Vec<Vec<Value>>,
-    pub removes: Vec<Vec<Value>>,
+    pub adds: Vec<Change>,
+    pub removes: Vec<Change>,
 }
 
 impl WatchDiff {

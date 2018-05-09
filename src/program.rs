@@ -44,6 +44,7 @@ use std::collections::{HashMap, HashSet, Bound, BTreeMap};
 
 use mech::database::{Database, Transaction, Change};
 use mech::table::{Value};
+use mech::indexes::{TableIndex, Hasher};
 
 extern crate term_painter;
 use self::term_painter::ToStyle;
@@ -57,7 +58,7 @@ use watchers::{Watcher, WatchDiff};
 pub struct Program {
   pub name: String,
   pub mech: Database,
-  watchers: HashMap<String, Box<Watcher + Send>>,
+  watchers: HashMap<u64, Box<Watcher + Send>>,
   pub incoming: Receiver<RunLoopMessage>,
   pub outgoing: Sender<RunLoopMessage>,
 }
@@ -65,7 +66,7 @@ pub struct Program {
 impl Program {
   pub fn new(name:&str) -> Program {
     let (outgoing, incoming) = mpsc::channel();
-    let mut db = Database::new(100000, 2);
+    let mut db = Database::new(1000, 2);
     let mut table_changes = vec![
       Change::NewTable{tag: 1, rows: 2, columns: 4}, 
     ];
@@ -81,8 +82,9 @@ impl Program {
   }
 
   pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
-    let name = watcher.get_name();
+    let name = Hasher::hash_str(&watcher.get_name());
     println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
+    self.mech.register_watcher(name);
     self.watchers.insert(name, watcher);
   }
 
@@ -155,8 +157,17 @@ impl ProgramRunner {
             println!("{} Txn started", &program.colored_name());
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
-            for watcher in program.watchers.values_mut() {
-              watcher.on_diff(&mut program.mech.store, WatchDiff::new());
+            // Process watchers
+            for (watcher_name, dirty) in program.mech.watched_index.iter_mut() {
+              if *dirty {
+                match program.watchers.get_mut(watcher_name) {
+                  Some(watcher) => {
+                    watcher.on_diff(&mut program.mech.store, WatchDiff{adds: txn.adds.clone(), removes: txn.removes.clone()});
+                    *dirty = false;
+                  },
+                  _ => (),
+                };
+              }
             }
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
