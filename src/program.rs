@@ -2,39 +2,6 @@
 
 // # Prelude
 
-/*
-use unicode_segmentation::UnicodeSegmentation;
-
-use indexes::{HashIndex, DistinctIter, DistinctIndex, WatchIndex, IntermediateIndex, MyHasher, AggregateEntry,
-              CollapsedChanges, RemoteIndex, RemoteChange, RawRemoteChange};
-use solver::Solver;
-use compiler::{make_block, parse_file, FunctionKind, Node};
-use std::collections::{HashMap, HashSet, Bound, BTreeMap};
-use std::mem::transmute;
-use std::cmp::{self, Eq, PartialOrd};
-use std::collections::hash_map::{DefaultHasher, Entry};
-use std::hash::{Hash, Hasher};
-use std::iter::{Iterator, FromIterator};
-use std::fmt;
-use watchers::{Watcher};
-
-
-use serde::ser::{Serialize, Serializer};
-use serde::de::{Deserialize, Deserializer, Visitor};
-use std::error::Error;
-use std::thread::{self, JoinHandle};
-use std::io::{Write, BufReader, BufWriter};
-use std::fs::{OpenOptions, File, canonicalize};
-use std::path::{Path, PathBuf};
-use std::f32::consts::{PI};
-use std::mem;
-use std::usize;
-use rand::{Rng, SeedableRng, XorShiftRng};
-use self::term_painter::ToStyle;
-use self::term_painter::Color::*;
-use parser;
-use combinators::{ParseState, ParseResult};*/
-
 extern crate time;
 
 use std::sync::mpsc::{Sender, Receiver, SendError};
@@ -51,7 +18,6 @@ use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 
 use watchers::{Watcher, WatchDiff};
-
 
 // ## Program
 
