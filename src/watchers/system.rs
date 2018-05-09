@@ -45,7 +45,6 @@ impl Watcher for SystemTimerWatcher {
       let outgoing = self.outgoing.clone();
       let system_timer_change = Hasher::hash_str("system/timer/change");
       let system_timer = Hasher::hash_str("system/timer");
-      println!("{:?}", interner.get_cell(system_timer, 1, 1));
       let resolution: i64 = match interner.get_cell(system_timer, 1, 1) {
         Some(Value::Number(n)) => *n,
         _ => 1000,
