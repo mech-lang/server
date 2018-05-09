@@ -21,3 +21,4 @@ pub trait Watcher {
 }
 
 pub mod system;
+pub mod websocket;

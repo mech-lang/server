@@ -47,6 +47,7 @@ use mech::table::Value;
 extern crate mech_server;
 use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
 use mech_server::watchers::system::{SystemTimerWatcher};
+use mech_server::watchers::websocket::{WebsocketClientWatcher};
 
 // ## Client Handler
 
@@ -68,6 +69,7 @@ impl ClientHandler {
     let mut runner = ProgramRunner::new(client_name);
     let outgoing = runner.program.outgoing.clone();
     runner.program.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
+    runner.program.attach_watcher(Box::new(WebsocketClientWatcher::new(out.clone(), client_name)));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
@@ -130,9 +132,9 @@ impl Handler for ClientHandler {
 struct Custom404;
 
 impl AfterMiddleware for Custom404 {
-    fn catch(&self, _: &mut Request, _: IronError) -> IronResult<Response> {
-        Ok(Response::with((status::NotFound, "File not found...")))
-    }
+  fn catch(&self, _: &mut Request, _: IronError) -> IronResult<Response> {
+      Ok(Response::with((status::NotFound, "File not found...")))
+  }
 }
 
 fn http_server(address: String) -> std::thread::JoinHandle<()> {
