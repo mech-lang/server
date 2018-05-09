@@ -49,7 +49,7 @@ extern crate term_painter;
 use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 
-use watchers::{Watcher};
+use watchers::{Watcher, WatchDiff};
 
 
 // ## Program
@@ -81,9 +81,9 @@ impl Program {
   }
 
   pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
-      let name = watcher.get_name();
-      println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
-      self.watchers.insert(name, watcher);
+    let name = watcher.get_name();
+    println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
+    self.watchers.insert(name, watcher);
   }
 
   pub fn colored_name(&self) -> term_painter::Painted<String> {
@@ -155,6 +155,9 @@ impl ProgramRunner {
             println!("{} Txn started", &program.colored_name());
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
+            for watcher in program.watchers.values_mut() {
+              watcher.on_diff(&mut program.mech.store, WatchDiff::new());
+            }
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
             println!("{:?}", program.mech);
@@ -167,5 +170,4 @@ impl ProgramRunner {
     }).unwrap();
     RunLoop { thread, outgoing }
   }
-
 }

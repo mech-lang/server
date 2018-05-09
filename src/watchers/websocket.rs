@@ -30,16 +30,15 @@ impl Watcher for WebsocketClientWatcher {
   fn set_name(&mut self, name: &str) {
     self.name = name.to_string();
   }
-  fn on_diff(&mut self, interner:&mut Interner, diff:WatchDiff) {
-  /*
-    let adds:Vec<Vec<JSONInternable>> = diff.adds.iter().map(|row| {
-        row.iter().map(|v| interner.get_value(*v).into()).collect()
+  fn on_diff(&mut self, interner:&mut Interner, diff: WatchDiff) {  
+    let adds:Vec<Vec<u64>> = diff.adds.iter().map(|row| {
+        row.iter().map(|v| 0).collect()
     }).collect();
-    let removes:Vec<Vec<JSONInternable>> = diff.removes.iter().map(|row| {
-        row.iter().map(|v| interner.get_value(*v).into()).collect()
+    let removes:Vec<Vec<u64>> = diff.removes.iter().map(|row| {
+        row.iter().map(|v| 0).collect()
     }).collect();
     let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": self.client_name})).unwrap();
     self.outgoing.send(Message::Text(text)).unwrap();
-    */
+    
   }
 }

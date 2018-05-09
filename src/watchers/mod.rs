@@ -14,6 +14,15 @@ pub struct WatchDiff {
     pub removes: Vec<Vec<Value>>,
 }
 
+impl WatchDiff {
+    pub fn new() -> WatchDiff  {
+        WatchDiff {
+            adds: Vec::new(),
+            removes: Vec::new(),
+        }
+    }
+}
+
 pub trait Watcher {
     fn get_name(& self) -> String;
     fn set_name(&mut self, &str);

@@ -28,7 +28,7 @@ impl SystemTimerWatcher {
         ]); 
         outgoing.send(RunLoopMessage::Transaction(txn));
         loop {
-          thread::sleep(Duration::from_millis(1000)); 
+          thread::sleep(Duration::from_millis(10)); 
           let cur_time = time::now();
           let txn = Transaction::from_changeset(vec![
             Change::Add{table: system_timer_change, row: 1, column: 1, value: Value::from_u64(cur_time.tm_hour as u64)},
@@ -62,28 +62,7 @@ impl Watcher for SystemTimerWatcher {
     }
 
     for add in diff.adds {
-      let outgoing = self.outgoing.clone();
-      thread::spawn(move || {
-        let mut tick = 0;
-        loop {
-          thread::sleep(Duration::from_millis(1000)); 
-          let cur_time = time::now();
-          let system_timer_change = Hasher::hash_str("system/timer/change");
-          let txn = Transaction::from_changeset(vec![
-            Change::Add{table: system_timer_change, row: 1, column: 1, value: Value::from_u64(cur_time.tm_hour as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 2, value: Value::from_u64(cur_time.tm_min as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 3, value: Value::from_u64(cur_time.tm_sec as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 4, value: Value::from_u64(cur_time.tm_nsec as u64)},
-          ]);     
-          tick += 1;
-          match outgoing.send(RunLoopMessage::Transaction(txn)) {
-            Err(_) => break,
-            _ => {}
-          }
-        }
-      });
-
-
+      
     }
 
     
