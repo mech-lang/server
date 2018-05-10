@@ -2,7 +2,8 @@ extern crate serde_json;
 
 
 extern crate ws;
-use self::ws::{Sender, Message};
+use std::sync::mpsc::{self, Sender};
+use self::ws::{Sender as WSSender, Message};
 use super::{Watcher, WatchDiff};
 use super::super::program::{RunLoopMessage};
 use mech::database::{Interner, Transaction, Change};
@@ -11,15 +12,19 @@ use mech::table::Value;
 
 pub struct WebsocketClientWatcher {
     name: String,
-    outgoing: Sender,
+    outgoing: Sender<RunLoopMessage>,
+    websocket_out: WSSender,
     client_name: String,
 }
 
 impl WebsocketClientWatcher {
-  pub fn new(outgoing: Sender, client_name: &str) -> WebsocketClientWatcher {
+  pub fn new(outgoing: Sender<RunLoopMessage>, websocket_out: WSSender, client_name: &str) -> WebsocketClientWatcher {
     let text = serde_json::to_string(&json!({"type": "init", "client": client_name})).unwrap();
-    outgoing.send(Message::Text(text)).unwrap();
-    WebsocketClientWatcher { name: "client/websocket".to_string(), outgoing, client_name: client_name.to_owned() }
+    websocket_out.send(Message::Text(text)).unwrap();
+    let client_websocket = Hasher::hash_str("client/websocket");
+    let new_table = Transaction::from_change(Change::NewTable{tag: client_websocket, rows: 100, columns: 4});
+    outgoing.send(RunLoopMessage::Transaction(new_table));
+    WebsocketClientWatcher { name: "client/websocket".to_string(), outgoing, websocket_out, client_name: client_name.to_owned() }
   }
 }
 
@@ -36,7 +41,7 @@ impl Watcher for WebsocketClientWatcher {
     }).collect();
     let removes: Vec<u64> = diff.removes.iter().map(|v| 0).collect();
     let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": self.client_name})).unwrap();
-    self.outgoing.send(Message::Text(text)).unwrap();
+    self.websocket_out.send(Message::Text(text)).unwrap();
     
   }
 }

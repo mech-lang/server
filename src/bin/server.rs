@@ -75,14 +75,14 @@ impl ClientHandler {
     let mut runner = ProgramRunner::new(client_name, 1000);
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
-    runner.attach_watcher(Box::new(WebsocketClientWatcher::new(out.clone(), client_name)));
+    runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
 
   //------------------------------------------------------
   // Load the bouncing balls program
   //------------------------------------------------------
   let system_timer = Hasher::hash_str("system/timer");
   let ball = Hasher::hash_str("ball");
-  runner.program.mech.runtime.register_blocks(vec![position_update()], &mut runner.program.mech.store);
+  runner.program.mech.runtime.register_blocks(vec![position_update(), export_ball()], &mut runner.program.mech.store);
   let mut balls = make_balls(10);
   let mut txn = Transaction::from_changeset(vec![
     Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
@@ -92,6 +92,7 @@ impl ClientHandler {
   let txn2 = Transaction::from_changeset(balls);
   outgoing.send(RunLoopMessage::Transaction(txn));
   outgoing.send(RunLoopMessage::Transaction(txn2));
+  println!("{:?}", runner.program.mech.runtime);
   //------------------------------------------------------
 
 
@@ -283,6 +284,21 @@ fn position_update() -> Block {
     Constraint::Insert {table: ball, column: 1, register: 1},
     Constraint::Insert {table: ball, column: 2, register: 2},
     Constraint::Insert {table: ball, column: 4, register: 3},
+  ];
+  block.plan = plan;
+  block
+}
+
+fn export_ball() -> Block {
+  let mut block = Block::new();
+  let ball = Hasher::hash_str("ball");
+  let websocket = Hasher::hash_str("client/websocket");
+  block.add_constraint(Constraint::Scan {table: ball, column: 1, register: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, register: 2});
+  block.add_constraint(Constraint::Constant {value: ball as i64, register: 1});
+  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});
+  let plan = vec![
+    Constraint::Insert {table: websocket, column: 1, register: 1},
   ];
   block.plan = plan;
   block
