@@ -17,15 +17,11 @@ pub struct SystemTimerWatcher {
 }
 
 impl SystemTimerWatcher {
-  pub fn new(outgoing2: Sender<RunLoopMessage>) -> SystemTimerWatcher {
-      let outgoing = outgoing2.clone();
+  pub fn new(outgoing: Sender<RunLoopMessage>) -> SystemTimerWatcher {
       let system_timer_change = Hasher::hash_str("system/timer/change");
-      let txn = Transaction::from_changeset(
-      vec![
-        Change::NewTable{tag: system_timer_change, rows: 1, columns: 5}
-      ]); 
-      outgoing.send(RunLoopMessage::Transaction(txn));
-    SystemTimerWatcher { name: "system/timer".to_string(), outgoing: outgoing2, timers: HashMap::new() }
+      let new_table = Transaction::from_change(Change::NewTable{tag: system_timer_change, rows: 1, columns: 5});
+      outgoing.send(RunLoopMessage::Transaction(new_table));
+    SystemTimerWatcher { name: "system/timer".to_string(), outgoing, timers: HashMap::new() }
   }
 }
 
