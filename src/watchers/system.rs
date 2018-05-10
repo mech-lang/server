@@ -46,7 +46,6 @@ impl Watcher for SystemTimerWatcher {
         _ => 1000,
       };
       let duration = Duration::from_millis(resolution as u64);
-      println!("{:?}", resolution);
       thread::spawn(move || {
         let mut tick = 0;
         loop {
