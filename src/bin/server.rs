@@ -72,25 +72,27 @@ pub struct ClientHandler {
 
 impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
-    let mut runner = ProgramRunner::new(client_name, 1000000);
+    let mut runner = ProgramRunner::new(client_name, 1000);
     let outgoing = runner.program.outgoing.clone();
-    runner.program.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
-    runner.program.attach_watcher(Box::new(WebsocketClientWatcher::new(out.clone(), client_name)));
+    runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
+    runner.attach_watcher(Box::new(WebsocketClientWatcher::new(out.clone(), client_name)));
 
-    // Load the bouncing balls program
-    let system_timer = Hasher::hash_str("system/timer");
-    let ball = Hasher::hash_str("ball");
-    runner.program.mech.runtime.register_blocks(vec![position_update()], &mut runner.program.mech.store);
-    let mut balls = make_balls(100000);
-    let mut txn = Transaction::from_changeset(vec![
-      Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
-      Change::NewTable{tag: ball, rows: 10, columns: 6}, 
-      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(10)},
-    ]); 
-    let txn2 = Transaction::from_changeset(balls);
-    outgoing.send(RunLoopMessage::Transaction(txn));
-    outgoing.send(RunLoopMessage::Transaction(txn2));
-
+  //------------------------------------------------------
+  // Load the bouncing balls program
+  //------------------------------------------------------
+  let system_timer = Hasher::hash_str("system/timer");
+  let ball = Hasher::hash_str("ball");
+  runner.program.mech.runtime.register_blocks(vec![position_update()], &mut runner.program.mech.store);
+  let mut balls = make_balls(10);
+  let mut txn = Transaction::from_changeset(vec![
+    Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
+    Change::NewTable{tag: ball, rows: 10, columns: 6}, 
+    Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(1000)},
+  ]); 
+  let txn2 = Transaction::from_changeset(balls);
+  outgoing.send(RunLoopMessage::Transaction(txn));
+  outgoing.send(RunLoopMessage::Transaction(txn2));
+  //------------------------------------------------------
 
 
 

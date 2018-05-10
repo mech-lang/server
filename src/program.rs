@@ -46,20 +46,6 @@ impl Program {
       outgoing 
     }
   }
-
-  // TODO Move this out of program and into program runner
-  pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
-    let name = Hasher::hash_str(&watcher.get_name());
-    
-    println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), name);
-    self.mech.register_watcher(name);
-    self.watchers.insert(name, watcher);
-  }
-
-  pub fn colored_name(&self) -> term_painter::Painted<String> {
-    BrightCyan.paint(format!("[{}]", &self.name))
-  }
-
 }
 
 // ## Run Loop
@@ -106,6 +92,7 @@ pub struct ProgramRunner {
 }
 
 impl ProgramRunner {
+
   pub fn new(name:&str, capacity: usize) -> ProgramRunner {
     ProgramRunner {
       name: name.to_owned(),
@@ -113,16 +100,26 @@ impl ProgramRunner {
     }
   }
 
+  // TODO Move this out of program and into program runner
+  pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
+    let name = Hasher::hash_str(&watcher.get_name());
+    println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), &watcher.get_name());
+    self.program.mech.register_watcher(name);
+    self.program.watchers.insert(name, watcher);
+  }
+
+
   pub fn run(self) -> RunLoop {
+    let name = self.colored_name();
     let outgoing = self.program.outgoing.clone();
     let mut program = self.program;
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
-      println!("{} Starting run loop.", &program.colored_name());
+      println!("{} Starting run loop.", name);
       let mut paused = false;
       'outer: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
-            println!("{} Txn started", &program.colored_name());
+            println!("{} Txn started", name);
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
             // Process watchers
@@ -130,7 +127,11 @@ impl ProgramRunner {
               if *dirty {
                 match program.watchers.get_mut(watcher_name) {
                   Some(watcher) => {
-                    watcher.on_diff(&mut program.mech.store, WatchDiff{adds: txn.adds.clone(), removes: txn.removes.clone()});
+                    let diff = WatchDiff{
+                      adds: txn.adds.clone(), 
+                      removes: txn.removes.clone()
+                    };
+                    watcher.on_diff(&mut program.mech.store, diff);
                     *dirty = false;
                   },
                   _ => (),
@@ -140,7 +141,7 @@ impl ProgramRunner {
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
             println!("{:?}", program.mech);
-            println!("{} Txn took {:0.4?} ms", &program.colored_name(), time / 1_000_000.0);
+            println!("{} Txn took {:0.4?} ms", name, time / 1_000_000.0);
           },
           (Ok(m), _) => println!("{:?}", m),
           _ => (),
@@ -149,4 +150,9 @@ impl ProgramRunner {
     }).unwrap();
     RunLoop { thread, outgoing }
   }
+
+  pub fn colored_name(&self) -> term_painter::Painted<String> {
+    BrightCyan.paint(format!("[{}]", &self.name))
+  }
+
 }
