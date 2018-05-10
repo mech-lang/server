@@ -18,9 +18,9 @@ pub struct SystemTimerWatcher {
 
 impl SystemTimerWatcher {
   pub fn new(outgoing: Sender<RunLoopMessage>) -> SystemTimerWatcher {
-      let system_timer_change = Hasher::hash_str("system/timer/change");
-      let new_table = Transaction::from_change(Change::NewTable{tag: system_timer_change, rows: 1, columns: 5});
-      outgoing.send(RunLoopMessage::Transaction(new_table));
+    let system_timer_change = Hasher::hash_str("system/timer/change");
+    let new_table = Transaction::from_change(Change::NewTable{tag: system_timer_change, rows: 1, columns: 8});
+    outgoing.send(RunLoopMessage::Transaction(new_table));
     SystemTimerWatcher { name: "system/timer".to_string(), outgoing, timers: HashMap::new() }
   }
 }
@@ -53,11 +53,14 @@ impl Watcher for SystemTimerWatcher {
           thread::sleep(duration); 
           let cur_time = time::now();
           let txn = Transaction::from_changeset(vec![
-            Change::Add{table: system_timer_change, row: 1, column: 1, value: Value::from_u64(cur_time.tm_hour as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 2, value: Value::from_u64(cur_time.tm_min as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 3, value: Value::from_u64(cur_time.tm_sec as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 4, value: Value::from_u64(cur_time.tm_nsec as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 5, value: Value::from_u64(tick)},
+            Change::Add{table: system_timer_change, row: 1, column: 1, value: Value::from_u64(cur_time.tm_year as u64 + 1900)},
+            Change::Add{table: system_timer_change, row: 1, column: 2, value: Value::from_u64(cur_time.tm_mon as u64 + 1)},
+            Change::Add{table: system_timer_change, row: 1, column: 3, value: Value::from_u64(cur_time.tm_mday as u64)},
+            Change::Add{table: system_timer_change, row: 1, column: 4, value: Value::from_u64(cur_time.tm_hour as u64)},
+            Change::Add{table: system_timer_change, row: 1, column: 5, value: Value::from_u64(cur_time.tm_min as u64)},
+            Change::Add{table: system_timer_change, row: 1, column: 6, value: Value::from_u64(cur_time.tm_sec as u64)},
+            Change::Add{table: system_timer_change, row: 1, column: 7, value: Value::from_u64(cur_time.tm_nsec as u64)},
+            Change::Add{table: system_timer_change, row: 1, column: 8, value: Value::from_u64(tick)},
           ]);     
           tick += 1;
           match outgoing.send(RunLoopMessage::Transaction(txn)) {
