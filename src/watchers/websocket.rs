@@ -1,14 +1,12 @@
 extern crate serde_json;
-
-
 extern crate ws;
 use std::sync::mpsc::{self, Sender};
 use self::ws::{Sender as WSSender, Message};
-use super::{Watcher, WatchDiff};
-use super::super::program::{RunLoopMessage};
 use mech::database::{Interner, Transaction, Change};
 use mech::indexes::Hasher;
 use mech::table::Value;
+use super::{Watcher, WatchDiff};
+use super::super::program::{RunLoopMessage};
 
 pub struct WebsocketClientWatcher {
     name: String,
@@ -36,8 +34,11 @@ impl Watcher for WebsocketClientWatcher {
     self.name = name.to_string();
   }
   fn on_diff(&mut self, interner:&mut Interner, diff: WatchDiff) {  
-    let adds: Vec<u64> = diff.adds.iter().map(|v| {
-      0
+    let adds: Vec<(u64, u64, u64, u64)> = diff.adds.iter().map(|v| {
+      match v {
+        Change::Add{table, row, column, value} => (*table, *row, *column, value.as_u64()),
+        _ => (0, 0 ,0, 0),
+      }
     }).collect();
     let removes: Vec<u64> = diff.removes.iter().map(|v| 0).collect();
     let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": self.client_name})).unwrap();
