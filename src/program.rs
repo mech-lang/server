@@ -127,10 +127,18 @@ impl ProgramRunner {
               if *dirty {
                 match program.watchers.get_mut(watcher_name) {
                   Some(watcher) => {
-                    let diff = WatchDiff{
-                      adds: txn.adds.clone(), 
-                      removes: txn.removes.clone()
-                    };
+                    let mut diff = WatchDiff::new();
+                    for i in program.mech.last_transaction .. program.mech.store.change_pointer {
+                      let change = &program.mech.store.changes[i];
+                      match change {
+                        Change::Add{table, ..} => {
+                          if table == watcher_name {
+                            diff.adds.push(change.clone());
+                          }
+                        }
+                        _ => (),
+                      }
+                    }
                     watcher.on_diff(&mut program.mech.store, diff);
                     *dirty = false;
                   },
