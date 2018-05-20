@@ -72,7 +72,7 @@ pub struct ClientHandler {
 
 impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
-    let mut runner = ProgramRunner::new(client_name, 1000);
+    let mut runner = ProgramRunner::new(client_name, 150000);
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
@@ -83,11 +83,11 @@ impl ClientHandler {
   let system_timer = Hasher::hash_str("system/timer");
   let ball = Hasher::hash_str("ball");
   runner.program.mech.runtime.register_blocks(vec![position_update(), export_ball()], &mut runner.program.mech.store);
-  let mut balls = make_balls(10);
+  let mut balls = make_balls(20000);
   let mut txn = Transaction::from_changeset(vec![
     Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
     Change::NewTable{tag: ball, rows: 10, columns: 6}, 
-    Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(1000)},
+    Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(10)},
   ]); 
   let txn2 = Transaction::from_changeset(balls);
   outgoing.send(RunLoopMessage::Transaction(txn));
@@ -265,40 +265,50 @@ fn position_update() -> Block {
   let mut block = Block::new();
   let ball = Hasher::hash_str("ball");
   let system_timer_change = Hasher::hash_str("system/timer/change");
-  block.add_constraint(Constraint::Scan {table: system_timer_change, column: 4, register: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 1, register: 2});
-  block.add_constraint(Constraint::Scan {table: ball, column: 2, register: 3});
-  block.add_constraint(Constraint::Scan {table: ball, column: 3, register: 4});
-  block.add_constraint(Constraint::Scan {table: ball, column: 4, register: 5});
-  block.add_constraint(Constraint::Scan {table: ball, column: 5, register: 6});
-  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![2, 4], output: 1});
-  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![3, 5], output: 2});
-  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 3});
-  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});
-  block.add_constraint(Constraint::Insert {table: ball, column: 2, register: 2});
-  block.add_constraint(Constraint::Insert {table: ball, column: 4, register: 3});
+  block.add_constraint(Constraint::Scan {table: system_timer_change, column: 4, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 1, input: 2});
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 3});
+  block.add_constraint(Constraint::Scan {table: ball, column: 3, input: 4});
+  block.add_constraint(Constraint::Scan {table: ball, column: 4, input: 5});  
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 1}); 
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![7, 8], output: 2});
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![8, 4], output: 3});
+  block.add_constraint(Constraint::Constant {value: 16, input: 4});
+  block.add_constraint(Constraint::Identity {source: 2, sink: 5});
+  block.add_constraint(Constraint::Identity {source: 4, sink: 6});
+  block.add_constraint(Constraint::Identity {source: 3, sink: 7});
+  block.add_constraint(Constraint::Identity {source: 5, sink: 8});
+  block.add_constraint(Constraint::Insert {output: 1, table: ball, column: 1});
+  block.add_constraint(Constraint::Insert {output: 2, table: ball, column: 2});
+  block.add_constraint(Constraint::Insert {output: 3, table: ball, column: 4});
   let plan = vec![
-    Constraint::Function {operation: Function::Add, parameters: vec![2, 4], output: 1},
-    Constraint::Function {operation: Function::Subtract, parameters: vec![3, 5], output: 2},
-    Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 3},
-    Constraint::Insert {table: ball, column: 1, register: 1},
-    Constraint::Insert {table: ball, column: 2, register: 2},
-    Constraint::Insert {table: ball, column: 4, register: 3},
+    Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 1},
+    Constraint::Function {operation: Function::Add, parameters: vec![7, 8], output: 2},
+    Constraint::Function {operation: Function::Add, parameters: vec![8, 4], output: 3},
+    Constraint::Insert {output: 1, table: ball, column: 1},
+    Constraint::Insert {output: 2, table: ball, column: 2},
+    Constraint::Insert {output: 3, table: ball, column: 4},
   ];
   block.plan = plan;
   block
 }
 
+
 fn export_ball() -> Block {
   let mut block = Block::new();
   let ball = Hasher::hash_str("ball");
   let websocket = Hasher::hash_str("client/websocket");
-  block.add_constraint(Constraint::Scan {table: ball, column: 1, register: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 2, register: 2});
-  block.add_constraint(Constraint::Constant {value: ball as i64, register: 1});
-  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 1, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 2});
+  block.add_constraint(Constraint::Identity {source: 1, sink: 1});
+  block.add_constraint(Constraint::Identity {source: 2, sink: 2});
+  block.add_constraint(Constraint::Insert {output: 1, table: websocket, column: 1});
+  block.add_constraint(Constraint::Insert {output: 2, table: websocket, column: 2});
   let plan = vec![
-    Constraint::Insert {table: websocket, column: 1, register: 1},
+    Constraint::Identity {source: 1, sink: 1},
+    Constraint::Identity {source: 2, sink: 2},
+    Constraint::Insert {output: 1, table: websocket, column: 1 },
+    Constraint::Insert {output: 2, table: websocket, column: 2 },
   ];
   block.plan = plan;
   block
