@@ -68,9 +68,6 @@ impl Watcher for SystemTimerWatcher {
           }
         }
       });
-    }
-
-    
-
+    }  
   }
 }
