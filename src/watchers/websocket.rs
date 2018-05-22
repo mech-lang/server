@@ -34,10 +34,10 @@ impl Watcher for WebsocketClientWatcher {
     self.name = name.to_string();
   }
   fn on_diff(&mut self, interner:&mut Interner, diff: WatchDiff) {  
-    let adds: Vec<(u64, u64, u64, u64)> = diff.adds.iter().map(|v| {
+    let adds: Vec<(String, u64, u64, u64, u64)> = diff.adds.iter().map(|v| {
       match v {
-        Change::Add{table, row, column, value} => (*table, *row, *column, value.as_u64()),
-        _ => (0, 0 ,0, 0),
+        Change::Add{table, row, column, value} => (String::from("html/export instances"), *table, *row, *column, value.as_u64()),
+        _ => (String::from(""), 0, 0 ,0, 0),
       }
     }).collect();
     let removes: Vec<u64> = diff.removes.iter().map(|v| 0).collect();
