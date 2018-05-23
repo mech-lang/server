@@ -83,11 +83,11 @@ impl ClientHandler {
   let system_timer = Hasher::hash_str("system/timer");
   let ball = Hasher::hash_str("ball");
   runner.program.mech.runtime.register_blocks(vec![position_update(), export_ball()], &mut runner.program.mech.store);
-  let mut balls = make_balls(20000);
+  let mut balls = make_balls(10);
   let mut txn = Transaction::from_changeset(vec![
     Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
     Change::NewTable{tag: ball, rows: 10, columns: 6}, 
-    Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(10)},
+    Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(1000)},
   ]); 
   let txn2 = Transaction::from_changeset(balls);
   outgoing.send(RunLoopMessage::Transaction(txn));
@@ -254,8 +254,6 @@ fn make_balls(n: u64) -> Vec<Change> {
     v.push(Change::Add{table: ball, row: i, column: 2, value: Value::from_u64(y)});
     v.push(Change::Add{table: ball, row: i, column: 3, value: Value::from_u64(dx)});
     v.push(Change::Add{table: ball, row: i, column: 4, value: Value::from_u64(dy)});
-    v.push(Change::Add{table: ball, row: i, column: 5, value: Value::from_u64(16)});
-    v.push(Change::Add{table: ball, row: i, column: 6, value: Value::from_u64(500)});
   
   }
   v
@@ -273,7 +271,7 @@ fn position_update() -> Block {
   block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 1}); 
   block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![7, 8], output: 2});
   block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![8, 4], output: 3});
-  block.add_constraint(Constraint::Constant {value: 16, input: 4});
+  block.add_constraint(Constraint::Constant {value: 10, input: 4});
   block.add_constraint(Constraint::Identity {source: 2, sink: 5});
   block.add_constraint(Constraint::Identity {source: 4, sink: 6});
   block.add_constraint(Constraint::Identity {source: 3, sink: 7});
