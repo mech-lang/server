@@ -148,8 +148,8 @@ impl ProgramRunner {
             }
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
-            //println!("{:?}", program.mech);
-            //println!("{} Txn took {:0.4?} ms", name, time / 1_000_000.0);
+            println!("{:?}", program.mech);
+            println!("{} Txn took {:0.4?} ms", name, time / 1_000_000.0);
           },
           (Ok(m), _) => println!("{:?}", m),
           _ => (),
