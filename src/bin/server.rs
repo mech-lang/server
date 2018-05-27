@@ -45,7 +45,7 @@ use mech::database::{Database, Change, Transaction};
 use mech::table::Value;
 use mech::indexes::{TableIndex, Hasher};
 use mech::runtime::{Block, Constraint};
-use mech::operations::Function;
+use mech::operations::{Function, Comparator};
 
 extern crate mech_server;
 use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
@@ -72,7 +72,7 @@ pub struct ClientHandler {
 
 impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
-    let mut runner = ProgramRunner::new(client_name, 150000);
+    let mut runner = ProgramRunner::new(client_name, 15000000);
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
@@ -82,8 +82,8 @@ impl ClientHandler {
   //------------------------------------------------------
   let system_timer = Hasher::hash_str("system/timer");
   let ball = Hasher::hash_str("ball");
-  runner.program.mech.runtime.register_blocks(vec![position_update(), export_ball()], &mut runner.program.mech.store);
-  let mut balls = make_balls(10000);
+  runner.program.mech.runtime.register_blocks(vec![position_update(), export_ball(), boundary_check()], &mut runner.program.mech.store);
+  let mut balls = make_balls(1000);
   let mut txn = Transaction::from_changeset(vec![
     Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
     Change::NewTable{tag: ball, rows: 10, columns: 6}, 
@@ -153,7 +153,7 @@ impl Handler for ClientHandler {
   fn on_close(&mut self, code: CloseCode, reason: &str) {
     println!("WebSocket closing for ({:?}) {}", code, reason);
     //self.router.lock().unwrap().unregister(&self.client_name);
-    //self.running.close();
+    self.running.close();
   }
 }
 
@@ -296,7 +296,6 @@ fn position_update() -> Block {
   block
 }
 
-
 fn export_ball() -> Block {
   let mut block = Block::new();
   let ball = Hasher::hash_str("ball");
@@ -312,6 +311,33 @@ fn export_ball() -> Block {
     Constraint::Identity {source: 2, sink: 2},
     Constraint::Insert {output: 1, table: websocket, column: 1 },
     Constraint::Insert {output: 2, table: websocket, column: 2 },
+  ];
+  block.plan = plan;
+  block
+}
+
+fn boundary_check() -> Block {
+  let mut block = Block::new();
+  let ball = Hasher::hash_str("ball");
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 4, input: 2});
+  block.add_constraint(Constraint::Identity {source: 1, sink: 1});  
+  block.add_constraint(Constraint::Constant {value: 10000, input: 2});
+  block.add_constraint(Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3});
+  block.add_constraint(Constraint::Identity {source: 2, sink: 4});  
+  block.add_constraint(Constraint::Constant {value: -1, input: 5});
+  block.add_constraint(Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6});
+  block.add_constraint(Constraint::Condition {truth: 3, result: 6, default: 5, output: 7});
+  block.add_constraint(Constraint::Insert {output: 7, table: ball, column: 4});
+  let plan = vec![
+    Constraint::Identity {source: 1, sink: 1},
+    Constraint::Identity {source: 2, sink: 4},
+    Constraint::Constant {value: 10000, input: 2},
+    Constraint::Constant {value: -1, input: 5},
+    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3},
+    Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6},
+    Constraint::Condition {truth: 3, result: 6, default: 4, output: 7},
+    Constraint::Insert {output: 7, table: ball, column: 4}
   ];
   block.plan = plan;
   block
