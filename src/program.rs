@@ -33,11 +33,6 @@ impl Program {
   pub fn new(name:&str, capacity: usize) -> Program {
     let (outgoing, incoming) = mpsc::channel();
     let mut db = Database::new(capacity, 100);
-    let mut table_changes = vec![
-      Change::NewTable{tag: 1, rows: 2, columns: 4}, 
-    ];
-    let txn = Transaction::from_changeset(table_changes);
-    db.process_transaction(&txn);
     Program { 
       name: name.to_owned(), 
       mech: db,
