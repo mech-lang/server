@@ -114,10 +114,10 @@ impl ProgramRunner {
       'outer: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
-            //println!("{} Txn started", name);
+            println!("{} Txn started", name);
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
-            // Process watchers
+            // Handle watchers
             for (watcher_name, dirty) in program.mech.watched_index.iter_mut() {
               if *dirty {
                 match program.watchers.get_mut(watcher_name) {
@@ -146,7 +146,9 @@ impl ProgramRunner {
             println!("{:?}", program.mech);
             println!("{} Txn took {:0.4?} ms", name, time / 1_000_000.0);
           },
-          (Ok(m), _) => println!("{:?}", m),
+          (Ok(RunLoopMessage::Stop), _) => {
+            paused = true;
+          }
           _ => (),
         }
       }
