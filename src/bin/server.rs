@@ -77,28 +77,29 @@ impl ClientHandler {
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
 
-  //------------------------------------------------------
-  // Load the bouncing balls program
-  //------------------------------------------------------
-  let system_timer = Hasher::hash_str("system/timer");
-  let ball = Hasher::hash_str("ball");
-  runner.program.mech.runtime.register_blocks(vec![position_update(), export_ball(), boundary_check()], &mut runner.program.mech.store);
-  let mut balls = make_balls(1000);
-  let mut txn = Transaction::from_changeset(vec![
-    Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
-    Change::NewTable{tag: ball, rows: 10, columns: 6}, 
-    Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(16)},
-  ]); 
-  let txn2 = Transaction::from_changeset(balls);
-  outgoing.send(RunLoopMessage::Transaction(txn));
-  outgoing.send(RunLoopMessage::Transaction(txn2));
-  println!("{:?}", runner.program.mech.runtime);
-  //------------------------------------------------------
-
-
-
-
-
+    //------------------------------------------------------
+    // Load the bouncing balls program                      
+    //------------------------------------------------------
+    let system_timer = Hasher::hash_str("system/timer");
+    let ball = Hasher::hash_str("ball");
+    runner.program.mech.runtime.register_blocks(vec![
+      position_update(), 
+      export_ball(), 
+      boundary_check(), 
+      boundary_check2(), 
+      boundary_check3()], &mut runner.program.mech.store);
+    let mut balls = make_balls(1000);
+    let mut txn = Transaction::from_changeset(vec![
+      Change::NewTable{tag: system_timer, rows: 10, columns: 8}, 
+      Change::NewTable{tag: ball, rows: 10, columns: 6}, 
+      Change::NewTable{tag: 2020, rows: 10, columns: 10},
+      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(2000)},
+    ]); 
+    let txn2 = Transaction::from_changeset(balls);
+    outgoing.send(RunLoopMessage::Transaction(txn));
+    outgoing.send(RunLoopMessage::Transaction(txn2));
+    println!("{:?}", runner.program.mech.runtime);
+    //------------------------------------------------------
 
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
@@ -131,11 +132,7 @@ impl Handler for ClientHandler {
       match deserialized {
           Ok(ClientMessage::Transaction { adds, removes }) => {
             println!("Txn: {:?} {:?}", adds, removes);
-            //self.running.send(RunLoopMessage::Transaction(adds));
-            
-            for remove in removes {
-              println!("Remove: {:?}", remove);
-            }
+            self.running.send(RunLoopMessage::Transaction(Transaction::from_adds_removes(adds, removes)));
           }
           Ok(m) => {
             println!("Unhandled Websocket Message: {:?}", m);
@@ -246,7 +243,7 @@ fn make_balls(n: u64) -> Vec<Change> {
     let mut rng = thread_rng();
     let x = rng.gen_range(1, 500);
     let y = rng.gen_range(1, 500);
-    let dx = rng.gen_range(1, 300);
+    let dx = rng.gen_range(1, 100);
     let dy = rng.gen_range(1, 100);
     let ball = Hasher::hash_str("ball");
   
@@ -284,7 +281,7 @@ fn position_update() -> Block {
     Constraint::Identity {source: 4, sink: 2},
     Constraint::Identity {source: 3, sink: 3},
     Constraint::Identity {source: 5, sink: 4},
-    Constraint::Constant {value: 10, input: 7},
+    Constraint::Constant {value: 2, input: 7},
     Constraint::Function {operation: Function::Add, parameters: vec![1, 2], output: 5},
     Constraint::Function {operation: Function::Add, parameters: vec![3, 4], output: 6},
     Constraint::Function {operation: Function::Add, parameters: vec![4, 7], output: 8},
@@ -322,8 +319,97 @@ fn boundary_check() -> Block {
   block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 1});
   block.add_constraint(Constraint::Scan {table: ball, column: 4, input: 2});
   block.add_constraint(Constraint::Identity {source: 1, sink: 1});  
-  block.add_constraint(Constraint::Constant {value: 10000, input: 2});
+  block.add_constraint(Constraint::Constant {value: 5000, input: 2});
   block.add_constraint(Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3});
+  block.add_constraint(Constraint::Identity {source: 2, sink: 4});  
+  block.add_constraint(Constraint::Constant {value: -1, input: 5});
+  block.add_constraint(Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6});
+  block.add_constraint(Constraint::Constant {value: 1, input: 7});
+  block.add_constraint(Constraint::Function {operation: Function::Divide, parameters: vec![6, 7], output: 8});
+  block.add_constraint(Constraint::Condition {truth: 3, result: 8, default: 5, output: 9});
+  block.add_constraint(Constraint::Insert {output: 9, table: ball, column: 4});
+  let plan = vec![
+    Constraint::Identity {source: 1, sink: 1},
+    Constraint::Identity {source: 2, sink: 4},
+    Constraint::Constant {value: 5000, input: 2},
+    Constraint::Constant {value: -9, input: 5},
+    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3},
+    Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6},
+    Constraint::Constant {value: 10, input: 7},
+    Constraint::Function {operation: Function::Divide, parameters: vec![6, 7], output: 8},
+    Constraint::Condition {truth: 3, result: 8, default: 4, output: 9},
+    Constraint::Insert {output: 9, table: ball, column: 4}
+  ];
+  block.plan = plan;
+  block
+}
+
+fn boundary_check2() -> Block {
+  let mut block = Block::new();
+  let ball = Hasher::hash_str("ball");
+  block.add_constraint(Constraint::Scan {table: ball, column: 1, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 3, input: 2});
+  block.add_constraint(Constraint::Identity {source: 1, sink: 1});  
+  block.add_constraint(Constraint::Constant {value: 5000, input: 2});
+  block.add_constraint(Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3});
+  block.add_constraint(Constraint::Identity {source: 2, sink: 4});  
+  block.add_constraint(Constraint::Constant {value: -1, input: 5});
+  block.add_constraint(Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6});
+  block.add_constraint(Constraint::Constant {value: 1, input: 7});
+  block.add_constraint(Constraint::Function {operation: Function::Divide, parameters: vec![6, 7], output: 8});
+  block.add_constraint(Constraint::Condition {truth: 3, result: 8, default: 5, output: 9});
+  block.add_constraint(Constraint::Insert {output: 9, table: ball, column: 4});
+  let plan = vec![
+    Constraint::Identity {source: 1, sink: 1},
+    Constraint::Identity {source: 2, sink: 4},
+    Constraint::Constant {value: 5000, input: 2},
+    Constraint::Constant {value: -8, input: 5},
+    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3},
+    Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6},
+    Constraint::Constant {value: 10, input: 7},
+    Constraint::Function {operation: Function::Divide, parameters: vec![6, 7], output: 8},
+    Constraint::Condition {truth: 3, result: 8, default: 4, output: 9},
+    Constraint::Insert {output: 9, table: ball, column: 3}
+  ];
+  block.plan = plan;
+  block
+}
+
+fn boundary_check3() -> Block {
+  let mut block = Block::new();
+  let ball = Hasher::hash_str("ball");
+  block.add_constraint(Constraint::Scan {table: ball, column: 1, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 3, input: 2});
+  block.add_constraint(Constraint::Identity {source: 1, sink: 1});  
+  block.add_constraint(Constraint::Constant {value: 0, input: 2});
+  block.add_constraint(Constraint::Filter {comparator: Comparator::LessThan, lhs: 1, rhs: 2, intermediate: 3});
+  block.add_constraint(Constraint::Identity {source: 2, sink: 4});  
+  block.add_constraint(Constraint::Constant {value: -1, input: 5});
+  block.add_constraint(Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6});
+  block.add_constraint(Constraint::Condition {truth: 3, result: 6, default: 5, output: 7});
+  block.add_constraint(Constraint::Insert {output: 7, table: ball, column: 3});
+  let plan = vec![
+    Constraint::Identity {source: 1, sink: 1},
+    Constraint::Identity {source: 2, sink: 4},
+    Constraint::Constant {value: 0, input: 2},
+    Constraint::Constant {value: -1, input: 5},
+    Constraint::Filter {comparator: Comparator::LessThan, lhs: 1, rhs: 2, intermediate: 3},
+    Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6},
+    Constraint::Condition {truth: 3, result: 6, default: 4, output: 7},
+    Constraint::Insert {output: 7, table: ball, column: 3}
+  ];
+  block.plan = plan;
+  block
+}
+
+fn boundary_check4() -> Block {
+  let mut block = Block::new();
+  let ball = Hasher::hash_str("ball");
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 4, input: 2});
+  block.add_constraint(Constraint::Identity {source: 1, sink: 1});  
+  block.add_constraint(Constraint::Constant {value: 0, input: 2});
+  block.add_constraint(Constraint::Filter {comparator: Comparator::LessThan, lhs: 1, rhs: 2, intermediate: 3});
   block.add_constraint(Constraint::Identity {source: 2, sink: 4});  
   block.add_constraint(Constraint::Constant {value: -1, input: 5});
   block.add_constraint(Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6});
@@ -332,9 +418,9 @@ fn boundary_check() -> Block {
   let plan = vec![
     Constraint::Identity {source: 1, sink: 1},
     Constraint::Identity {source: 2, sink: 4},
-    Constraint::Constant {value: 10000, input: 2},
+    Constraint::Constant {value: 0, input: 2},
     Constraint::Constant {value: -1, input: 5},
-    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3},
+    Constraint::Filter {comparator: Comparator::LessThan, lhs: 1, rhs: 2, intermediate: 3},
     Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6},
     Constraint::Condition {truth: 3, result: 6, default: 4, output: 7},
     Constraint::Insert {output: 7, table: ball, column: 4}
