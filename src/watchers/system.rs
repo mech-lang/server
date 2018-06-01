@@ -12,16 +12,14 @@ use std::collections::hash_map::{Entry};
 
 pub struct SystemTimerWatcher {
   name: String,
+  columns: usize,
   outgoing: Sender<RunLoopMessage>,
   timers: HashMap<u64, (usize, Sender<()>)>
 }
 
 impl SystemTimerWatcher {
   pub fn new(outgoing: Sender<RunLoopMessage>) -> SystemTimerWatcher {
-    let system_timer_change = Hasher::hash_str("system/timer/change");
-    let new_table = Transaction::from_change(Change::NewTable{tag: system_timer_change, rows: 1, columns: 8});
-    outgoing.send(RunLoopMessage::Transaction(new_table));
-    SystemTimerWatcher { name: "system/timer".to_string(), outgoing, timers: HashMap::new() }
+    SystemTimerWatcher { name: "system/timer".to_string(), outgoing, timers: HashMap::new(), columns: 9 }
   }
 }
 
@@ -32,42 +30,41 @@ impl Watcher for SystemTimerWatcher {
   fn set_name(&mut self, name: &str) {
     self.name = name.to_string();
   }
-
+  fn get_columns(&self) -> usize {
+    self.columns
+  }
   fn on_diff(&mut self, interner: &mut Interner, diff: WatchDiff) {
     for remove in diff.removes {
 
     }
-    for add in diff.adds {
-      let outgoing = self.outgoing.clone();
-      let system_timer_change = Hasher::hash_str("system/timer/change");
-      let system_timer = Hasher::hash_str("system/timer");
-      let resolution: i64 = match interner.get_cell(system_timer, 1, 1) {
-        Some(Value::Number(n)) => *n,
-        _ => 1000,
-      };
-      let duration = Duration::from_millis(resolution as u64);
-      thread::spawn(move || {
-        let mut tick = 0;
-        loop {
-          thread::sleep(duration); 
-          let cur_time = time::now();
-          let txn = Transaction::from_changeset(vec![
-            Change::Add{table: system_timer_change, row: 1, column: 1, value: Value::from_u64(cur_time.tm_year as u64 + 1900)},
-            Change::Add{table: system_timer_change, row: 1, column: 2, value: Value::from_u64(cur_time.tm_mon as u64 + 1)},
-            Change::Add{table: system_timer_change, row: 1, column: 3, value: Value::from_u64(cur_time.tm_mday as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 4, value: Value::from_u64(cur_time.tm_hour as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 5, value: Value::from_u64(cur_time.tm_min as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 6, value: Value::from_u64(cur_time.tm_sec as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 7, value: Value::from_u64(cur_time.tm_nsec as u64)},
-            Change::Add{table: system_timer_change, row: 1, column: 8, value: Value::from_u64(tick)},
-          ]);     
-          tick += 1;
-          match outgoing.send(RunLoopMessage::Transaction(txn)) {
-            Err(_) => break,
-            _ => {}
+    for (table, row, column, value) in diff.adds {
+      if column == 1 {
+        let outgoing = self.outgoing.clone();
+        let system_timer = Hasher::hash_str(&self.get_name());
+        let duration = Duration::from_millis(value as u64);
+        thread::spawn(move || {
+          let mut tick = 0;
+          loop {
+            thread::sleep(duration); 
+            let cur_time = time::now();
+            let txn = Transaction::from_changeset(vec![
+              Change::Add{table, row, column: 2, value: Value::from_u64(cur_time.tm_year as u64 + 1900)},
+              Change::Add{table, row, column: 4, value: Value::from_u64(cur_time.tm_mday as u64)},
+              Change::Add{table, row, column: 3, value: Value::from_u64(cur_time.tm_mon as u64 + 1)},
+              Change::Add{table, row, column: 5, value: Value::from_u64(cur_time.tm_hour as u64)},
+              Change::Add{table, row, column: 6, value: Value::from_u64(cur_time.tm_min as u64)},
+              Change::Add{table, row, column: 7, value: Value::from_u64(cur_time.tm_sec as u64)},
+              Change::Add{table, row, column: 8, value: Value::from_u64(cur_time.tm_nsec as u64)},
+              Change::Add{table, row, column: 9, value: Value::from_u64(tick)},
+            ]);     
+            tick += 1;
+            match outgoing.send(RunLoopMessage::Transaction(txn)) {
+              Err(_) => break,
+              _ => {}
+            }
           }
-        }
-      });
+        });
+      }
     }  
   }
 }

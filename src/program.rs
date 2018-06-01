@@ -100,9 +100,12 @@ impl ProgramRunner {
   // TODO Move this out of program and into program runner
   pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
     let name = Hasher::hash_str(&watcher.get_name());
+    let columns = watcher.get_columns().clone();
     println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), &watcher.get_name());
     self.program.mech.register_watcher(name);
     self.program.watchers.insert(name, watcher);
+    let watcher_table = Transaction::from_change(Change::NewTable{tag: name, rows: 1, columns});
+    self.program.outgoing.send(RunLoopMessage::Transaction(watcher_table));
   }
 
 
@@ -128,9 +131,9 @@ impl ProgramRunner {
                     for i in program.mech.last_transaction .. program.mech.store.change_pointer {
                       let change = &program.mech.store.changes[i];
                       match change {
-                        Change::Add{table, ..} => {
+                        Change::Add{table, row, column, value} => {
                           if table == watcher_name {
-                            diff.adds.push(change.clone());
+                            diff.adds.push((*table, *row, *column, value.as_i64().unwrap()));
                           }
                         }
                         _ => (),
