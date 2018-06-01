@@ -39,91 +39,70 @@ fn position_update() -> Block {
   let mut block = Block::new();
   let ball = Hasher::hash_str("ball");
   let system_timer_change = Hasher::hash_str("system/timer/change");
-  block.add_constraint(Constraint::Scan {table: system_timer_change, column: 4, register: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 1, register: 2});
-  block.add_constraint(Constraint::Scan {table: ball, column: 2, register: 3});
-  block.add_constraint(Constraint::Scan {table: ball, column: 3, register: 4});
-  block.add_constraint(Constraint::Scan {table: ball, column: 4, register: 5});
-  block.add_constraint(Constraint::Scan {table: ball, column: 5, register: 6});
-  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![2, 4], output: 1});
-  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![3, 5], output: 2});
-  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 3});
-  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});
-  block.add_constraint(Constraint::Insert {table: ball, column: 2, register: 2});
-  block.add_constraint(Constraint::Insert {table: ball, column: 4, register: 3});
+  block.add_constraint(Constraint::Scan {table: system_timer_change, column: 4, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 1, input: 2});
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 3});
+  block.add_constraint(Constraint::Scan {table: ball, column: 3, input: 4});
+  block.add_constraint(Constraint::Scan {table: ball, column: 4, input: 5});  
+  block.add_constraint(Constraint::Identity {source: 2, sink: 1});
+  block.add_constraint(Constraint::Identity {source: 4, sink: 2});
+  block.add_constraint(Constraint::Identity {source: 3, sink: 3});
+  block.add_constraint(Constraint::Identity {source: 5, sink: 4});
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![1, 2], output: 5}); 
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![3, 4], output: 6});
+  block.add_constraint(Constraint::Constant {value: 1, input: 7});
+  block.add_constraint(Constraint::Function {operation: Function::Add, parameters: vec![4, 7], output: 8});
+  block.add_constraint(Constraint::Insert {output: 5, table: ball, column: 1});
+  block.add_constraint(Constraint::Insert {output: 6, table: ball, column: 2});
+  block.add_constraint(Constraint::Insert {output: 7, table: ball, column: 4});
   let plan = vec![
-    Constraint::Function {operation: Function::Add, parameters: vec![2, 4], output: 1},
-    Constraint::Function {operation: Function::Subtract, parameters: vec![3, 5], output: 2},
-    Constraint::Function {operation: Function::Add, parameters: vec![5, 6], output: 3},
-    Constraint::Insert {table: ball, column: 1, register: 1},
-    Constraint::Insert {table: ball, column: 2, register: 2},
-    Constraint::Insert {table: ball, column: 4, register: 3},
+    Constraint::Identity {source: 2, sink: 1},
+    Constraint::Identity {source: 4, sink: 2},
+    Constraint::Identity {source: 3, sink: 3},
+    Constraint::Identity {source: 5, sink: 4},
+    Constraint::Constant {value: 2, input: 7},
+    Constraint::Function {operation: Function::Add, parameters: vec![1, 2], output: 5},
+    Constraint::Function {operation: Function::Add, parameters: vec![3, 4], output: 6},
+    Constraint::Function {operation: Function::Add, parameters: vec![4, 7], output: 8},
+    Constraint::Insert {output: 5, table: ball, column: 1},
+    Constraint::Insert {output: 6, table: ball, column: 2},
+    Constraint::Insert {output: 8, table: ball, column: 4},
   ];
   block.plan = plan;
   block
 }
+
 
 fn boundary_check() -> Block {
   let mut block = Block::new();
   let ball = Hasher::hash_str("ball");
-  block.add_constraint(Constraint::Scan {table: ball, column: 1, register: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 6, register: 2});
-  block.add_constraint(Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, register: 1});
-  block.add_constraint(Constraint::Constant {value: 500, register: 3});
-  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});  
+  block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 1});
+  block.add_constraint(Constraint::Scan {table: ball, column: 4, input: 2});
+  block.add_constraint(Constraint::Identity {source: 1, sink: 1});  
+  block.add_constraint(Constraint::Constant {value: 5000, input: 2});
+  block.add_constraint(Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3});
+  block.add_constraint(Constraint::Identity {source: 2, sink: 4});  
+  block.add_constraint(Constraint::Constant {value: -1, input: 5});
+  block.add_constraint(Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6});
+  block.add_constraint(Constraint::Constant {value: 1, input: 7});
+  block.add_constraint(Constraint::Function {operation: Function::Divide, parameters: vec![6, 7], output: 8});
+  block.add_constraint(Constraint::Condition {truth: 3, result: 8, default: 5, output: 9});
+  block.add_constraint(Constraint::Insert {output: 9, table: ball, column: 4});
   let plan = vec![
-    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, register: 1}
+    Constraint::Identity {source: 1, sink: 1},
+    Constraint::Identity {source: 2, sink: 4},
+    Constraint::Constant {value: 5000, input: 2},
+    Constraint::Constant {value: -9, input: 5},
+    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, intermediate: 3},
+    Constraint::Function {operation: Function::Multiply, parameters: vec![4, 5], output: 6},
+    Constraint::Constant {value: 10, input: 7},
+    Constraint::Function {operation: Function::Divide, parameters: vec![6, 7], output: 8},
+    Constraint::Condition {truth: 3, result: 8, default: 4, output: 9},
+    Constraint::Insert {output: 9, table: ball, column: 4}
   ];
   block.plan = plan;
   block
 }
-
-fn boundary_check2() -> Block {
-  let mut block = Block::new();
-  let ball = Hasher::hash_str("ball");
-  block.add_constraint(Constraint::Scan {table: ball, column: 1, register: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 6, register: 2});
-  block.add_constraint(Constraint::Filter {comparator: Comparator::LessThan, lhs: 1, rhs: 2, register: 1});
-  block.add_constraint(Constraint::Constant {value: 0, register: 3});
-  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});  
-  let plan = vec![
-    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, register: 1}
-  ];
-  block.plan = plan;
-  block
-}
-
-fn boundary_check3() -> Block {
-  let mut block = Block::new();
-  let ball = Hasher::hash_str("ball");
-  block.add_constraint(Constraint::Scan {table: ball, column: 2, register: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 6, register: 2});
-  block.add_constraint(Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, register: 1});
-  block.add_constraint(Constraint::Constant {value: 500, register: 3});
-  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});  
-  let plan = vec![
-    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, register: 1}
-  ];
-  block.plan = plan;
-  block
-}
-
-fn boundary_check4() -> Block {
-  let mut block = Block::new();
-  let ball = Hasher::hash_str("ball");
-  block.add_constraint(Constraint::Scan {table: ball, column: 2, register: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 6, register: 2});
-  block.add_constraint(Constraint::Filter {comparator: Comparator::LessThan, lhs: 1, rhs: 2, register: 1});
-  block.add_constraint(Constraint::Constant {value: 0, register: 3});
-  block.add_constraint(Constraint::Insert {table: ball, column: 1, register: 1});  
-  let plan = vec![
-    Constraint::Filter {comparator: Comparator::GreaterThan, lhs: 1, rhs: 2, register: 1}
-  ];
-  block.plan = plan;
-  block
-}
-
-
 
 fn step_db(db: &mut Database) {
   let system_timer_change = Hasher::hash_str("system/timer/change");
@@ -142,7 +121,7 @@ fn make_db(n: u64) -> Database {
   let mut db = Database::new(1000, 2);
     let system_timer_change = Hasher::hash_str("system/timer/change");
   let ball = Hasher::hash_str("ball");
-  db.runtime.register_blocks(vec![position_update(), boundary_check(), boundary_check2(), boundary_check3(), boundary_check4()], &mut db.store);
+  db.runtime.register_blocks(vec![position_update(), boundary_check()], &mut db.store);
   let mut balls = make_balls(n);
   let mut table_changes = vec![
     Change::NewTable{tag: system_timer_change, rows: 1, columns: 4}, 
