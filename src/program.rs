@@ -59,6 +59,7 @@ pub struct RunLoop {
 }
 
 impl RunLoop {
+
   pub fn wait(self) {
     self.thread.join().unwrap();
   }
@@ -77,6 +78,7 @@ impl RunLoop {
   pub fn channel(&self) -> Sender<RunLoopMessage> {
     self.outgoing.clone()
   }
+
 }
 
 // ## Program Runner
@@ -144,6 +146,7 @@ impl ProgramRunner {
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
             println!("{:?}", program.mech);
+            //println!("{:?}", program.mech.runtime);
             println!("{} Txn took {:0.4?} ms", name, time / 1_000_000.0);
           },
           (Ok(RunLoopMessage::Stop), _) => {
