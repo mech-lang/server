@@ -120,6 +120,7 @@ impl ProgramRunner {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
             println!("{} Txn started", name);
+            let pre_changes = program.mech.store.len();
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
             // Handle watchers
@@ -146,11 +147,12 @@ impl ProgramRunner {
                 };
               }
             }
+            let delta_changes = program.mech.store.len() - pre_changes;
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
             println!("{:?}", program.mech);
-            //println!("{:?}", program.mech.runtime);
-            println!("{} Txn took {:0.4?} ms", name, time / 1_000_000.0);
+            println!("{:?}", program.mech.runtime);
+            println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           },
           (Ok(RunLoopMessage::Stop), _) => {
             paused = true;
