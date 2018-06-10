@@ -1,3 +1,7 @@
+<img width="40%" height="40%" src="https://mechlang.net/img/logo.png">
+
+---
+
 # Mech Server
 
 The Mech server hosts an instance of Mech that accepts changes over a websocket. It's the beginning of the Mech platform and distributed Mech.
