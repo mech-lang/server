@@ -4,7 +4,13 @@
 
 # Mech Server
 
-The Mech server hosts an instance of Mech that accepts changes over a websocket. It's the beginning of the Mech platform and distributed Mech.
+Mech Server is the way most users will work with Mech. It hosts a websocket server that accepts connections from a Mech notebook. The main contribution of this module is the notion of a `Program`, which is essentially a network of Mech cores. The program can start up any number of cores on any number of threads, either remotely or locally.
+
+## Build
+
+```
+cargo build --bin server --release
+```
 
 ## License
 
