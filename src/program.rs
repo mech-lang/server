@@ -50,7 +50,7 @@ impl Program {
     let mut parser = Parser::new();
     let mut compiler = Compiler::new();
     
-    lexer.add_string(input);
+    lexer.add_string(input.clone());
     let tokens = lexer.get_tokens();
     
     parser.add_tokens(&mut tokens.clone());
