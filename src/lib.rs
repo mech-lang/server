@@ -3,7 +3,8 @@
 // ## Prelude
 
 extern crate mech;
-
+extern crate mech_syntax;
+extern crate time;
 #[macro_use]
 extern crate serde_json;
 

@@ -2,8 +2,6 @@
 
 // # Prelude
 
-extern crate time;
-
 use std::sync::mpsc::{Sender, Receiver, SendError};
 use std::thread::{self, JoinHandle};
 use std::sync::mpsc;
@@ -11,11 +9,16 @@ use std::collections::{HashMap, HashSet, Bound, BTreeMap};
 
 use mech::database::{Database, Transaction, Change};
 use mech::table::{Value};
+use mech::runtime::Block;
 use mech::indexes::{TableIndex, Hasher};
+use mech_syntax::lexer::Lexer;
+use mech_syntax::parser::{Parser, ParseStatus, Node};
+use mech_syntax::compiler::Compiler;
 
 extern crate term_painter;
 use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
+use time;
 
 use watchers::{Watcher, WatchDiff};
 
@@ -32,15 +35,36 @@ pub struct Program {
 impl Program {
   pub fn new(name:&str, capacity: usize) -> Program {
     let (outgoing, incoming) = mpsc::channel();
-    let mut db = Database::new(capacity, 100);
+    let mut core = Database::new(capacity, 100);
     Program { 
       name: name.to_owned(), 
-      mech: db,
+      mech: core,
       watchers: HashMap::new(),
       incoming, 
       outgoing 
     }
   }
+
+  pub fn compile_string(&mut self, input: String) {
+    let mut lexer = Lexer::new();
+    let mut parser = Parser::new();
+    let mut compiler = Compiler::new();
+    
+    lexer.add_string(input);
+    let tokens = lexer.get_tokens();
+    
+    parser.add_tokens(&mut tokens.clone());
+    parser.build_ast();
+    
+    let constraints = compiler.compile(parser.ast);
+    
+    let mut block = Block::new();
+    block.add_constraints(constraints);
+    block.text = input;
+    block.plan();
+    self.mech.runtime.register_blocks(vec![block], &mut self.mech.store);
+  }
+
 }
 
 // ## Run Loop
@@ -95,6 +119,10 @@ impl ProgramRunner {
       name: name.to_owned(),
       program: Program::new(name, capacity),
     }
+  }
+
+  pub fn load_program(&mut self, input: String) {
+    self.program.compile_string(input);
   }
 
   // TODO Move this out of program and into program runner
