@@ -7,10 +7,10 @@ use std::thread::{self, JoinHandle};
 use std::sync::mpsc;
 use std::collections::{HashMap, HashSet, Bound, BTreeMap};
 
-use mech::database::{Database, Transaction, Change};
-use mech::table::{Value};
-use mech::runtime::Block;
-use mech::indexes::{TableIndex, Hasher};
+use mech::{Core, Transaction, Change};
+use mech::{Value};
+use mech::Block;
+use mech::{TableIndex, Hasher};
 use mech_syntax::lexer::Lexer;
 use mech_syntax::parser::{Parser, ParseStatus, Node};
 use mech_syntax::compiler::Compiler;
@@ -26,7 +26,7 @@ use watchers::{Watcher, WatchDiff};
 
 pub struct Program {
   pub name: String,
-  pub mech: Database,
+  pub mech: Core,
   watchers: HashMap<u64, Box<Watcher + Send>>,
   pub incoming: Receiver<RunLoopMessage>,
   pub outgoing: Sender<RunLoopMessage>,
@@ -35,34 +35,38 @@ pub struct Program {
 impl Program {
   pub fn new(name:&str, capacity: usize) -> Program {
     let (outgoing, incoming) = mpsc::channel();
-    let mut core = Database::new(capacity, 100);
     Program { 
       name: name.to_owned(), 
-      mech: core,
+      mech: Core::new(capacity, 100),
       watchers: HashMap::new(),
       incoming, 
       outgoing 
     }
   }
 
-  pub fn compile_string(&mut self, input: String) {
+  pub fn compile_string(&self, input: String) {
     let mut lexer = Lexer::new();
     let mut parser = Parser::new();
     let mut compiler = Compiler::new();
     
     lexer.add_string(input.clone());
     let tokens = lexer.get_tokens();
-    
+    println!("{:?}", &tokens);
     parser.add_tokens(&mut tokens.clone());
     parser.build_ast();
-    
+    println!("{:?}", &parser.clone());
     let constraints = compiler.compile(parser.ast);
+    println!("{:?}", &constraints.clone());
     
     let mut block = Block::new();
     block.add_constraints(constraints);
     block.text = input;
     block.plan();
+
+    println!("{:?}", block);
+    /*
     self.mech.runtime.register_blocks(vec![block], &mut self.mech.store);
+    */
   }
 
 }
@@ -178,8 +182,15 @@ impl ProgramRunner {
             let delta_changes = program.mech.store.len() - pre_changes;
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;
+            let text = match program.mech.store.get_cell(1,1,1) {
+              Some(value) => value.as_string().unwrap(),
+              None => "",
+            };
+
+
             println!("{:?}", program.mech);
-            println!("{:?}", program.mech.runtime);
+            program.compile_string(String::from(text.clone()));
+            //println!("{:?}", program.mech.runtime);
             println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           },
           (Ok(RunLoopMessage::Stop), _) => {

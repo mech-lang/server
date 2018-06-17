@@ -3,8 +3,8 @@
 // ## Prelude
 
 extern crate mech;
-use mech::database::{Interner, Change};
-use mech::table::Value;
+use mech::{Interner, Change};
+use mech::Value;
 
 // ## Watchers
 

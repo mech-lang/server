@@ -2,9 +2,9 @@ extern crate serde_json;
 extern crate ws;
 use std::sync::mpsc::{self, Sender};
 use self::ws::{Sender as WSSender, Message};
-use mech::database::{Interner, Transaction, Change};
-use mech::indexes::Hasher;
-use mech::table::Value;
+use mech::{Interner, Transaction, Change};
+use mech::Hasher;
+use mech::Value;
 use super::{Watcher, WatchDiff};
 use super::super::program::{RunLoopMessage};
 

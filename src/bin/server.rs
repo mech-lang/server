@@ -41,11 +41,11 @@ use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 
 extern crate mech;
-use mech::database::{Database, Change, Transaction};
-use mech::table::Value;
-use mech::indexes::{TableIndex, Hasher};
-use mech::runtime::{Block, Constraint};
-use mech::operations::{Function, Comparator};
+use mech::{Core, Change, Transaction};
+use mech::Value;
+use mech::{TableIndex, Hasher};
+use mech::{Block, Constraint};
+use mech::{Function, Comparator};
 
 extern crate mech_server;
 use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
@@ -61,7 +61,7 @@ use rand::{Rng, thread_rng};
 pub enum ClientMessage {
     Block { id: String, code: String },
     RemoveBlock { id: String },
-    Transaction { adds: Vec<(u64, u64, u64, u64)>, removes: Vec<(u64, u64, u64, u64)> },
+    Transaction { adds: Vec<(u64, u64, u64, String)>, removes: Vec<(u64, u64, u64, String)> },
 }
 
 pub struct ClientHandler {
@@ -77,6 +77,7 @@ impl ClientHandler {
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
 
+    
     //────────────────────────────────────────────────────
     // Load the bouncing balls program                      
     //────────────────────────────────────────────────────
@@ -84,18 +85,19 @@ impl ClientHandler {
     let ball = Hasher::hash_str("ball");
     let click = Hasher::hash_str("html/event/click");
     runner.program.mech.runtime.register_blocks(vec![
-      position_update(), 
-      export_ball(), 
-      boundary_check(), 
+      //position_update(), 
+      //export_ball(), 
+      //boundary_check(), 
       //boundary_check2(), 
       //boundary_check3(),
-      reset_balls(),
+      //reset_balls(),
       ], &mut runner.program.mech.store);
     let mut balls = make_balls(10);
     let mut txn = Transaction::from_changeset(vec![
+      Change::NewTable{tag: 1, rows: 1, columns: 6}, 
       Change::NewTable{tag: ball, rows: 10, columns: 6}, 
       Change::NewTable{tag: click, rows: 1, columns: 2},
-      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(16)},
+      //Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(16)},
     ]); 
     let txn2 = Transaction::from_changeset(balls);
     outgoing.send(RunLoopMessage::Transaction(txn));
@@ -103,6 +105,7 @@ impl ClientHandler {
     println!("{:?}", runner.program.mech.runtime);
     //────────────────────────────────────────────────────
 
+    runner.load_program(String::from("#add.3 = #add.1 * #add.2"));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
@@ -128,7 +131,9 @@ impl Handler for ClientHandler {
       match deserialized {
           Ok(ClientMessage::Transaction { adds, removes }) => {
             println!("Txn: {:?} {:?}", adds, removes);
-            self.running.send(RunLoopMessage::Transaction(Transaction::from_adds_removes(adds, removes)));
+            let txn = from_adds_removes(adds, removes);
+            println!("{:?}", txn);
+            self.running.send(RunLoopMessage::Transaction(txn));
           }
           Ok(m) => {
             println!("Unhandled Websocket Message: {:?}", m);
@@ -149,6 +154,18 @@ impl Handler for ClientHandler {
     self.running.close();
   }
 }
+
+  pub fn from_adds_removes(adds: Vec<(u64, u64, u64, String)>, removes: Vec<(u64, u64, u64, String)>) -> Transaction {
+    let mut txn = Transaction::new();
+    for (table, row,column, value) in adds {
+      println!("{:?} {:?}", value, Value::from_string(value.clone()));
+      txn.adds.push(Change::Add{table, row, column, value: Value::from_string(value)});
+    }
+    for (table, row,column, value) in removes {
+      txn.removes.push(Change::Remove{table, row, column, value: Value::from_string(value)});
+    }
+    txn    
+  }
 
 // ## Static File Server
 
