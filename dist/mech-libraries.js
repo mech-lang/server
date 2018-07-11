@@ -300,12 +300,27 @@ var HTML = /** @class */ (function (_super) {
                 var adds = _a.adds, removes = _a.removes;
                 for (var _i = 0, _b = removes || EMPTY; _i < _b.length; _i++) {
                     var remove = _b[_i];
+                    //this.removeInstance(instanceId);
                 }
                 for (var _c = 0, _d = adds || EMPTY; _c < _d.length; _c++) {
-                    var _e = _d[_c], handler = _e[0], table = _e[1], row = _e[2], column = _e[3], value = _e[4];
+                    var _e = _d[_c], table = _e[0], row = _e[1], column = _e[2], value = _e[3];
                     _this.addInstance(table, row, column, value);
                 }
             })
+        };
+        _this._keyMap = {
+            9: "tab",
+            13: "enter",
+            16: "shift",
+            17: "control",
+            18: "alt",
+            27: "escape",
+            32: "space",
+            37: "left",
+            38: "up",
+            39: "right",
+            40: "down",
+            91: "meta"
         };
         return _this;
     }
@@ -318,21 +333,33 @@ var HTML = /** @class */ (function (_super) {
         this._container = document.createElement("div");
         this._container.setAttribute("program", this.program.name);
         document.body.appendChild(this._container);
+        var editor = document.createElement("div");
+        editor.setAttribute("class", "editor");
+        this._container.appendChild(editor);
+        var textarea = document.createElement("textarea");
+        textarea.setAttribute("id", "editor-text-area");
+        editor.appendChild(textarea);
         var canvas = this._canvas = document.createElement("canvas");
-        canvas.setAttribute("width", "1000");
-        canvas.setAttribute("height", "1000");
+        canvas.setAttribute("width", "500");
+        canvas.setAttribute("height", "500");
+        canvas.style.backgroundColor = 'rgb(226, 79, 94)';
         this._container.appendChild(canvas);
+        window.addEventListener("click", this._mouseEventHandler("click"));
+        //window.addEventListener("change", this._changeEventHandler("change"));
+        //window.addEventListener("input", this._inputEventHandler("change"));
+        window.addEventListener("keyup", this._keyEventHandler("key-up"));
+        //window.addEventListener("keyup", this._keyEventHandler("key-up"));
         var context = canvas.getContext('2d');
         if (context !== null) {
             var centerX = canvas.width / 2;
             var centerY = canvas.height / 2;
-            var radius = 10;
+            var radius = 5;
             context.beginPath();
             context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-            context.fillStyle = 'green';
+            context.fillStyle = 'black';
             context.fill();
-            context.lineWidth = 1;
-            context.strokeStyle = '#003300';
+            context.lineWidth = 0;
+            context.strokeStyle = '#000000';
             context.stroke();
         }
     };
@@ -376,17 +403,17 @@ var HTML = /** @class */ (function (_super) {
         var canvas = this._canvas;
         var context = canvas.getContext("2d");
         context.clearRect(0, 0, canvas.width, canvas.height);
-        var radius = 6;
+        var radius = 5;
         for (var _i = 0, _a = this._paths; _i < _a.length; _i++) {
             var path = _a[_i];
             var centerX = path[0] / 10;
             var centerY = path[1] / 10;
             context.beginPath();
             context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
-            context.fillStyle = 'green';
+            context.fillStyle = 'black';
             context.fill();
             context.lineWidth = 1;
-            context.strokeStyle = '#003300';
+            context.strokeStyle = '#000000';
             context.stroke();
         }
     };
@@ -395,6 +422,35 @@ var HTML = /** @class */ (function (_super) {
             this._isChanging = true;
             setImmediate(this.changed);
         }
+    };
+    HTML.prototype._sendEvent = function (change) {
+        console.log(change);
+        this.program.send_transaction(change);
+    };
+    // ----------------------
+    // BROWSER EVENT HANDLERS
+    // ----------------------
+    HTML.prototype._mouseEventHandler = function (tagname) {
+        var _this = this;
+        var table_id = 6987102065;
+        return function (event) {
+            _this._sendEvent([[table_id, 1, 1, event.x],
+                [table_id, 1, 2, event.y]]);
+        };
+    };
+    HTML.prototype._keyEventHandler = function (tagname) {
+        var _this = this;
+        return function (event) {
+            if (event.repeat)
+                return;
+            var target = event.target;
+            var code = event.keyCode;
+            var key = _this._keyMap[code];
+            var value = target.value;
+            if (value != undefined) {
+                _this._sendEvent([[1, 1, 1, value]]);
+            }
+        };
     };
     HTML.id = "html";
     return HTML;
@@ -437,6 +493,7 @@ var Connection = /** @class */ (function () {
         ws.addEventListener("message", function (event) { return _this._messaged(event.data); });
     }
     Connection.prototype.send = function (type, data, client) {
+        var _a;
         console.groupCollapsed("Sent");
         console.log(type, data, client);
         console.groupEnd();
@@ -445,7 +502,6 @@ var Connection = /** @class */ (function () {
         var payload = JSON.stringify((_a = {}, _a[type] = data, _a));
         this._queue.push(payload);
         this._trySend();
-        var _a;
     };
     Connection.prototype._trySend = function () {
         if (this.connected) {
@@ -485,12 +541,10 @@ var RemoteProgram = /** @class */ (function () {
             this.handlers[libraryId + "/" + handlerName] = library.handlers[handlerName];
         }
     };
-    /*
-    inputEAVs(eavs:RawEAV[]) {
-      let diff:Diff<RawEAV[]> = {adds: eavs, removes: []};
-      this.send("Transaction", diff);
-      return this;
-    }*/
+    RemoteProgram.prototype.send_transaction = function (transaction) {
+        this.send("Transaction", { adds: transaction, removes: [] });
+        return this;
+    };
     RemoteProgram.prototype.handleDiff = function (diff) {
         for (var type in this.handlers) {
             this.handlers[type](diff);
