@@ -44,7 +44,7 @@ impl Program {
     }
   }
 
-  pub fn compile_string(&self, input: String) {
+  pub fn compile_string(&mut self, input: String) {
     let mut lexer = Lexer::new();
     let mut parser = Parser::new();
     let mut compiler = Compiler::new();
@@ -53,20 +53,11 @@ impl Program {
     let tokens = lexer.get_tokens();
     println!("{:?}", &tokens);
     parser.add_tokens(&mut tokens.clone());
-    parser.build_ast();
+    parser.build_parse_tree();
     println!("{:?}", &parser.clone());
-    let constraints = compiler.compile(parser.ast);
-    println!("{:?}", &constraints.clone());
-    
-    let mut block = Block::new();
-    block.add_constraints(constraints);
-    block.text = input;
-    block.plan();
-
-    println!("{:?}", block);
-    /*
-    self.mech.runtime.register_blocks(vec![block], &mut self.mech.store);
-    */
+    let ast = compiler.build_syntax_tree(parser.parse_tree);
+    println!("{:?}", ast);
+    self.mech.runtime.register_blocks(compiler.blocks, &mut self.mech.store);
   }
 
 }
@@ -189,7 +180,7 @@ impl ProgramRunner {
 
 
             println!("{:?}", program.mech);
-            program.compile_string(String::from(text.clone()));
+            //program.compile_string(String::from(text.clone()));
             //println!("{:?}", program.mech.runtime);
             println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           },
