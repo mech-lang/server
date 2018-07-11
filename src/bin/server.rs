@@ -85,19 +85,18 @@ impl ClientHandler {
     let ball = Hasher::hash_str("ball");
     let click = Hasher::hash_str("html/event/click");
     runner.program.mech.runtime.register_blocks(vec![
-      //position_update(), 
-      //export_ball(), 
-      //boundary_check(), 
+      position_update(), 
+      export_ball(), 
+      boundary_check(), 
       //boundary_check2(), 
       //boundary_check3(),
       //reset_balls(),
-      ], &mut runner.program.mech.store);
-    let mut balls = make_balls(10);
+    ], &mut runner.program.mech.store);
+    let mut balls = make_balls(1000);
     let mut txn = Transaction::from_changeset(vec![
-      Change::NewTable{tag: 1, rows: 1, columns: 6}, 
       Change::NewTable{tag: ball, rows: 10, columns: 6}, 
       Change::NewTable{tag: click, rows: 1, columns: 2},
-      //Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(16)},
+      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(16)},
     ]); 
     let txn2 = Transaction::from_changeset(balls);
     outgoing.send(RunLoopMessage::Transaction(txn));
@@ -105,7 +104,7 @@ impl ClientHandler {
     println!("{:?}", runner.program.mech.runtime);
     //────────────────────────────────────────────────────
 
-    runner.load_program(String::from("#add.3 = #add.1 * #add.2"));
+    //runner.load_program(String::from("#add.3 = #add.1 * #add.2"));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
