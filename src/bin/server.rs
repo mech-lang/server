@@ -81,7 +81,7 @@ impl ClientHandler {
     //────────────────────────────────────────────────────
     // Load the bouncing balls program                      
     //────────────────────────────────────────────────────
-    let system_timer = Hasher::hash_str("system/timer");
+    /*let system_timer = Hasher::hash_str("system/timer");
     let ball = Hasher::hash_str("ball");
     let click = Hasher::hash_str("html/event/click");
     runner.program.mech.runtime.register_blocks(vec![
@@ -101,10 +101,10 @@ impl ClientHandler {
     let txn2 = Transaction::from_changeset(balls);
     outgoing.send(RunLoopMessage::Transaction(txn));
     outgoing.send(RunLoopMessage::Transaction(txn2));
-    println!("{:?}", runner.program.mech.runtime);
+    println!("{:?}", runner.program.mech.runtime);*/
     //────────────────────────────────────────────────────
 
-    //runner.load_program(String::from("#add.3 = #add.1 * #add.2"));
+    runner.load_program(String::from("#system/timer = [resolution: 16 ]"));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
@@ -248,6 +248,7 @@ fn main() {
   websocket_server(websocket_address);
 }
 
+/*
 fn make_balls(n: u64) -> Vec<Change> {
   let mut v = Vec::new();
   for i in 0 .. n + 1 {
@@ -498,3 +499,4 @@ fn boundary_check3() -> Block {
   block.plan = plan;
   block
 }
+*/
