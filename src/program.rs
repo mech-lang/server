@@ -45,18 +45,8 @@ impl Program {
   }
 
   pub fn compile_string(&mut self, input: String) {
-    let mut lexer = Lexer::new();
-    let mut parser = Parser::new();
     let mut compiler = Compiler::new();
-    
-    lexer.add_string(input.clone());
-    let tokens = lexer.get_tokens();
-    println!("{:?}", &tokens);
-    parser.add_tokens(&mut tokens.clone());
-    parser.build_parse_tree();
-    println!("{:?}", &parser.clone());
-    let ast = compiler.build_syntax_tree(parser.parse_tree);
-    println!("{:?}", ast);
+    compiler.compile_string(input);    
     self.mech.runtime.register_blocks(compiler.blocks, &mut self.mech.store);
   }
 
@@ -127,7 +117,7 @@ impl ProgramRunner {
     println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), &watcher.get_name());
     self.program.mech.register_watcher(name);
     self.program.watchers.insert(name, watcher);
-    let watcher_table = Transaction::from_change(Change::NewTable{tag: name, rows: 1, columns});
+    let watcher_table = Transaction::from_change(Change::NewTable{id: name, rows: 1, columns});
     self.program.outgoing.send(RunLoopMessage::Transaction(watcher_table));
   }
 
