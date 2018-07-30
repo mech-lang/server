@@ -38,7 +38,7 @@ impl Watcher for SystemTimerWatcher {
 
     }
     for (table, row, column, value) in diff.adds {
-      if column == 1 {
+      if column == Hasher::hash_str("resolution") {
         let outgoing = self.outgoing.clone();
         let system_timer = Hasher::hash_str(&self.get_name());
         let duration = Duration::from_millis(value as u64);
