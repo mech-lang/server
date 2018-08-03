@@ -85,11 +85,11 @@ Define the environment
 
 Define the timestep
   #dt = #system/timer.resolution
-  
+
 Now update the block positions
   #x = #ball.x + #ball.vx
   #y = #ball.y + #ball.vy
-  #ballvy = #ball.vy + #gravity * #dt"
+  #ballvy = #ball.vy + #gravity * #dt";
     runner.load_program(String::from(program));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
