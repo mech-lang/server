@@ -19,7 +19,7 @@ pub struct SystemTimerWatcher {
 
 impl SystemTimerWatcher {
   pub fn new(outgoing: Sender<RunLoopMessage>) -> SystemTimerWatcher {
-    SystemTimerWatcher { name: "system/timer".to_string(), outgoing, timers: HashMap::new(), columns: 9 }
+    SystemTimerWatcher { name: "system/timer".to_string(), outgoing, timers: HashMap::new(), columns: 10 }
   }
 }
 
@@ -44,20 +44,24 @@ impl Watcher for SystemTimerWatcher {
         let duration = Duration::from_millis(value as u64);
         thread::spawn(move || {
           let mut tick = 0;
+          let mut last = 0;
           loop {
             thread::sleep(duration); 
             let cur_time = time::now();
+            let now = time::precise_time_ns();
             let txn = Transaction::from_changeset(vec![
-              Change::Add{table, row, column: 2, value: Value::from_u64(cur_time.tm_year as u64 + 1900)},
-              Change::Add{table, row, column: 4, value: Value::from_u64(cur_time.tm_mday as u64)},
-              Change::Add{table, row, column: 3, value: Value::from_u64(cur_time.tm_mon as u64 + 1)},
-              Change::Add{table, row, column: 5, value: Value::from_u64(cur_time.tm_hour as u64)},
-              Change::Add{table, row, column: 6, value: Value::from_u64(cur_time.tm_min as u64)},
-              Change::Add{table, row, column: 7, value: Value::from_u64(cur_time.tm_sec as u64)},
-              Change::Add{table, row, column: 8, value: Value::from_u64(cur_time.tm_nsec as u64)},
-              Change::Add{table, row, column: 9, value: Value::from_u64(tick)},
+              Change::Add{table, row, column: Hasher::hash_str("year"), value: Value::from_u64(cur_time.tm_year as u64 + 1900)},
+              Change::Add{table, row, column: Hasher::hash_str("day"), value: Value::from_u64(cur_time.tm_mday as u64)},
+              Change::Add{table, row, column: Hasher::hash_str("month"), value: Value::from_u64(cur_time.tm_mon as u64 + 1)},
+              Change::Add{table, row, column: Hasher::hash_str("hour"), value: Value::from_u64(cur_time.tm_hour as u64)},
+              Change::Add{table, row, column: Hasher::hash_str("minute"), value: Value::from_u64(cur_time.tm_min as u64)},
+              Change::Add{table, row, column: Hasher::hash_str("second"), value: Value::from_u64(cur_time.tm_sec as u64)},
+              Change::Add{table, row, column: Hasher::hash_str("nano-second"), value: Value::from_u64(cur_time.tm_nsec as u64)},
+              Change::Add{table, row, column: Hasher::hash_str("tick"), value: Value::from_u64(tick)},
+              Change::Add{table, row, column: Hasher::hash_str("dt"), value: Value::from_u64(now - last)},
             ]);     
             tick += 1;
+            last = now;
             match outgoing.send(RunLoopMessage::Transaction(txn)) {
               Err(_) => break,
               _ => {}
