@@ -76,19 +76,21 @@ impl ClientHandler {
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
-    
-    runner.load_program(String::from("# Bouncing Balls
+    let program = "# Bouncing Balls
 Define the environment
   #ball = [x: 15 y: 9 vx: 18 vy: 0]
   #system/timer = [resolution: 1000]
   #gravity = 10
   #boundary = 5000
+
 Define the timestep
   #dt = #system/timer.resolution
+  
 Now update the block positions
   #x = #ball.x + #ball.vx
   #y = #ball.y + #ball.vy
-  #ballvy = #ball.vy + #gravity * #dt"));
+  #ballvy = #ball.vy + #gravity * #dt"
+    runner.load_program(String::from(program));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
