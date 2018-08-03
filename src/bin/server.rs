@@ -104,7 +104,18 @@ impl ClientHandler {
     println!("{:?}", runner.program.mech.runtime);*/
     //────────────────────────────────────────────────────
 
-    runner.load_program(String::from("#system/timer = [resolution: 16 ]"));
+    runner.load_program(String::from("# Bouncing Balls
+Define the environment
+  #ball = [x: 15 y: 9 vx: 18 vy: 0]
+  #system/timer = [resolution: 1000]
+  #gravity = 10
+  #boundary = 5000
+Define the timestep
+  #dt = #system/timer.resolution
+Now update the block positions
+  #x = #ball.x + #ball.vx
+  #y = #ball.y + #ball.vy
+  #ballvy = #ball.vy + #gravity * #dt"));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
