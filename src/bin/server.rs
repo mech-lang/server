@@ -76,34 +76,7 @@ impl ClientHandler {
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
-
     
-    //────────────────────────────────────────────────────
-    // Load the bouncing balls program                      
-    //────────────────────────────────────────────────────
-    /*let system_timer = Hasher::hash_str("system/timer");
-    let ball = Hasher::hash_str("ball");
-    let click = Hasher::hash_str("html/event/click");
-    runner.program.mech.runtime.register_blocks(vec![
-      position_update(), 
-      export_ball(), 
-      boundary_check(), 
-      //boundary_check2(), 
-      //boundary_check3(),
-      //reset_balls(),
-    ], &mut runner.program.mech.store);
-    let mut balls = make_balls(1000);
-    let mut txn = Transaction::from_changeset(vec![
-      Change::NewTable{tag: ball, rows: 10, columns: 6}, 
-      Change::NewTable{tag: click, rows: 1, columns: 2},
-      Change::Add{table: system_timer, row: 1, column: 1, value: Value::from_u64(16)},
-    ]); 
-    let txn2 = Transaction::from_changeset(balls);
-    outgoing.send(RunLoopMessage::Transaction(txn));
-    outgoing.send(RunLoopMessage::Transaction(txn2));
-    println!("{:?}", runner.program.mech.runtime);*/
-    //────────────────────────────────────────────────────
-
     runner.load_program(String::from("# Bouncing Balls
 Define the environment
   #ball = [x: 15 y: 9 vx: 18 vy: 0]
