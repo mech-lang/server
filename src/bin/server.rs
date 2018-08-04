@@ -72,24 +72,21 @@ pub struct ClientHandler {
 
 impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
-    let mut runner = ProgramRunner::new(client_name, 15000000);
+    let mut runner = ProgramRunner::new(client_name, 1500000);
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
     let program = "# Bouncing Balls
 Define the environment
-  #ball = [x: 15 y: 9 vx: 18 vy: 0]
-  #system/timer = [resolution: 1000]
+  #ball = [x: 15 y: 9 vx: 18 vy: 9]
+  #system/timer = [resolution: 15]
   #gravity = 10
-  #boundary = 5000
-
-Define the timestep
-  #dt = #system/timer.resolution
-
+  
 Now update the block positions
-  #x = #ball.x + #ball.vx
-  #y = #ball.y + #ball.vy
-  #ballvy = #ball.vy + #gravity * #dt";
+  ~ #system/timer.tick
+  #ball.x := #ball.x + 1
+  #ball.y := #ball.y + 1
+  #ball.vy := #ball.vy + #gravity";
     runner.load_program(String::from(program));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
