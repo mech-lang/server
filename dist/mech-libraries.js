@@ -304,7 +304,15 @@ var HTML = /** @class */ (function (_super) {
                 }
                 for (var _c = 0, _d = adds || EMPTY; _c < _d.length; _c++) {
                     var _e = _d[_c], table = _e[0], row = _e[1], column = _e[2], value = _e[3];
-                    _this.addInstance(table, row, column, value);
+                    if (table == 1819042146) {
+                        if (column == 120) {
+                            column = 1;
+                        }
+                        if (column == 121) {
+                            column = 2;
+                        }
+                        _this.addInstance(row, column, value);
+                    }
                 }
             })
         };
@@ -371,7 +379,7 @@ var HTML = /** @class */ (function (_super) {
         this._container.appendChild(e);
         return e;
     };
-    HTML.prototype.addInstance = function (table, row, column, value) {
+    HTML.prototype.addInstance = function (row, column, value) {
         row = row - 1;
         column = column - 1;
         //if(id === null || id === "null") throw new Error(`Cannot create instance with null id for element '${elemId}'.`);
