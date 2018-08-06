@@ -90,13 +90,13 @@ Now update the block positions
   #ball.y := #ball.y + #ball.vy
   #ball.vy := #ball.vy + #gravity
 
-Keep the balls within the y-boundary
+Keep the balls within the y boundary
   ~ #ball.x
   iy = #ball.y > #boundary
   #ball.y[iy] := #boundary
   #ball.vy[iy] := 0 - 1 * #ball.vy * 80 / 100
 
-Keep the balls within the x-boundary
+Keep the balls within the x boundary
   ~ #ball.y
   ix = #ball.x > #boundary
   ixx = #ball.x < 0
