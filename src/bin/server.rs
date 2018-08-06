@@ -249,65 +249,13 @@ fn main() {
 }
 
 /*
-fn make_balls(n: u64) -> Vec<Change> {
-  let mut v = Vec::new();
-  for i in 0 .. n + 1 {
-
-    let mut rng = thread_rng();
-    let x = rng.gen_range(1, 500);
-    let y = rng.gen_range(1, 500);
-    let dx = rng.gen_range(1, 100);
-    let dy = rng.gen_range(1, 100);
-    let ball = Hasher::hash_str("ball");
-  
-    v.push(Change::Add{table: ball, row: i, column: 1, value: Value::from_u64(x)});
-    v.push(Change::Add{table: ball, row: i, column: 2, value: Value::from_u64(y)});
-    v.push(Change::Add{table: ball, row: i, column: 3, value: Value::from_u64(dx)});
-    v.push(Change::Add{table: ball, row: i, column: 4, value: Value::from_u64(0)});
-  
-  }
-  v
-}
-
-
-
-
-/*
-block
-  [#ball x y]
-  #client/websocket.x := #ball.x
-  #client/websocket.y := #ball.y
-end
-*/
-fn export_ball() -> Block {
-  let mut block = Block::new();
-  let ball = Hasher::hash_str("ball");
-  let websocket = Hasher::hash_str("client/websocket");
-  block.add_constraint(Constraint::Scan {table: ball, column: 1, input: 1});
-  block.add_constraint(Constraint::Scan {table: ball, column: 2, input: 2});
-  block.add_constraint(Constraint::Identity {source: 1, sink: 1});
-  block.add_constraint(Constraint::Identity {source: 2, sink: 2});
-  block.add_constraint(Constraint::Insert {output: 1, table: websocket, column: 1});
-  block.add_constraint(Constraint::Insert {output: 2, table: websocket, column: 2});
-  let plan = vec![
-    Constraint::Identity {source: 1, sink: 1},
-    Constraint::Identity {source: 2, sink: 2},
-    Constraint::Insert {output: 1, table: websocket, column: 1 },
-    Constraint::Insert {output: 2, table: websocket, column: 2 },
-  ];
-  block.plan = plan;
-  block
-}
-
-
-/*
 block
   click = [#html/event/click/change]
   [#ball x y]
   x := click.x
   y := click.y 
 end
-*/
+
 fn reset_balls() -> Block {
   let mut block = Block::new();
   let ball = Hasher::hash_str("ball");
