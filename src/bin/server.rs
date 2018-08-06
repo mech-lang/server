@@ -72,7 +72,7 @@ pub struct ClientHandler {
 
 impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
-    let mut runner = ProgramRunner::new(client_name, 1500000);
+    let mut runner = ProgramRunner::new(client_name, out.clone(), 1500000);
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
@@ -80,7 +80,7 @@ impl ClientHandler {
 
 Define the environment
   #ball = [x: 15 y: 9 vx: 18 vy: 9]
-  #system/timer = [resolution: 1000]
+  #system/timer = [resolution: 15]
   #gravity = 98
   #boundary = 5000
 
@@ -266,9 +266,8 @@ fn make_balls(n: u64) -> Vec<Change> {
 /*
 block
   [#ball x y]
-  ws = #[client/websocket]
-  ws.send += x
-  ws.send += y
+  #client/websocket.x := #ball.x
+  #client/websocket.y := #ball.y
 end
 */
 fn export_ball() -> Block {
