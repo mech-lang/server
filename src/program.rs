@@ -1,6 +1,7 @@
 // # Program
 
 // # Prelude
+extern crate ws;
 
 use std::sync::mpsc::{Sender, Receiver, SendError};
 use std::thread::{self, JoinHandle};
@@ -21,6 +22,7 @@ use self::term_painter::Color::*;
 use time;
 
 use watchers::{Watcher, WatchDiff};
+use self::ws::{Sender as WSSender, Message};
 
 // ## Program
 
@@ -28,17 +30,19 @@ pub struct Program {
   pub name: String,
   pub mech: Core,
   watchers: HashMap<u64, Box<Watcher + Send>>,
+  pub out: WSSender,
   pub incoming: Receiver<RunLoopMessage>,
   pub outgoing: Sender<RunLoopMessage>,
 }
 
 impl Program {
-  pub fn new(name:&str, capacity: usize) -> Program {
+  pub fn new(name:&str, out: WSSender, capacity: usize) -> Program {
     let (outgoing, incoming) = mpsc::channel();
     Program { 
       name: name.to_owned(), 
       mech: Core::new(capacity, 100),
       watchers: HashMap::new(),
+      out,
       incoming, 
       outgoing 
     }
@@ -94,15 +98,15 @@ impl RunLoop {
 
 pub struct ProgramRunner {
   pub name: String,
-  pub program: Program,  
+  pub program: Program, 
 }
 
 impl ProgramRunner {
 
-  pub fn new(name:&str, capacity: usize) -> ProgramRunner {
+  pub fn new(name:&str, out: WSSender, capacity: usize) -> ProgramRunner {
     ProgramRunner {
       name: name.to_owned(),
-      program: Program::new(name, capacity),
+      program: Program::new(name, out, capacity),
     }
   }
 
@@ -162,17 +166,34 @@ impl ProgramRunner {
             }
             let delta_changes = program.mech.store.len() - pre_changes;
             let end_ns = time::precise_time_ns();
-            let time = (end_ns - start_ns) as f64;
-            let text = match program.mech.store.get_cell(1,1,1) {
-              Some(value) => value.as_string().unwrap(),
-              None => "",
-            };
-
-
-            println!("{:?}", program.mech);
+            let time = (end_ns - start_ns) as f64;              
+            // Send changes to connected clients
+            // TODO Handle rollover of changes
+            let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
+            let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+            
+            for i in program.mech.last_transaction .. program.mech.store.change_pointer {
+              let change = &program.mech.store.changes[i];
+              match change {
+                Change::Add{table, row, column, value} => {
+                  let i64_value = match value.as_i64() {
+                    Some(n) => n,
+                    None => 0,
+                  };
+                  adds.push((*table, *row, *column, i64_value));
+                },
+                _ => (),
+              }
+            }
+            let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
+            program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
             //println!("{:?}", program.mech.runtime);
             println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
+          
+
+
+
           },
           (Ok(RunLoopMessage::Stop), _) => {
             paused = true;
