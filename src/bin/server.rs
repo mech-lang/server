@@ -80,14 +80,21 @@ impl ClientHandler {
 
 Define the environment
   #ball = [x: 15 y: 9 vx: 18 vy: 9]
-  #system/timer = [resolution: 15]
+  #system/timer = [resolution: 1000]
   #gravity = 98
+  #boundary = 5000
 
 Now update the block positions
   ~ #system/timer.tick
   #ball.x := #ball.x + #ball.vx
   #ball.y := #ball.y + #ball.vy
-  #ball.vy := #ball.vy + #gravity";
+  #ball.vy := #ball.vy + #gravity
+
+Keep the balls within the boundary
+  ~ #ball.x
+  iy = #ball.y > #boundary
+  #ball.y[iy] := #boundary
+  #ball.vy[iy] := 0 - 1 * #ball.vy";
     runner.load_program(String::from(program));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
