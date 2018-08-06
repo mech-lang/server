@@ -1,6 +1,7 @@
 // # Mech Server
 
 // ## Prelude
+#![feature(extern_prelude)]
 
 extern crate mech;
 extern crate mech_syntax;
