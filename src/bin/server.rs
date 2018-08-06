@@ -79,7 +79,7 @@ impl ClientHandler {
     let program = "# Bouncing Balls
 
 Define the environment
-  #ball = [x: 15 y: 9 vx: 10 vy: 9]
+  #ball = [x: 15 y: 9 vx: 40 vy: 9]
   #system/timer = [resolution: 15]
   #gravity = 2
   #boundary = 5000
@@ -90,11 +90,20 @@ Now update the block positions
   #ball.y := #ball.y + #ball.vy
   #ball.vy := #ball.vy + #gravity
 
-Keep the balls within the boundary
+Keep the balls within the y-boundary
   ~ #ball.x
   iy = #ball.y > #boundary
   #ball.y[iy] := #boundary
-  #ball.vy[iy] := 0 - 1 * #ball.vy * 80 / 100";
+  #ball.vy[iy] := 0 - 1 * #ball.vy * 80 / 100
+
+Keep the balls within the x-boundary
+  ~ #ball.y
+  ix = #ball.x > #boundary
+  ixx = #ball.x < 0
+  #ball.x[ix] := #boundary
+  #ball.x[ixx] := 0
+  #ball.vx[ix] := 0 - 1 * #ball.vx * 80 / 100
+  #ball.vx[ixx] := 0 - 1 * #ball.vx * 80 / 100";
     runner.load_program(String::from(program));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
