@@ -61,7 +61,7 @@ use rand::{Rng, thread_rng};
 pub enum ClientMessage {
     Block { id: String, code: String },
     RemoveBlock { id: String },
-    Transaction { adds: Vec<(u64, u64, u64, String)>, removes: Vec<(u64, u64, u64, String)> },
+    Transaction { adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)> },
 }
 
 pub struct ClientHandler {
@@ -79,6 +79,7 @@ impl ClientHandler {
     let program = "# Bouncing Balls
 
 Define the environment
+  #html/event/click = [x: 0 y: 0]
   #ball = [x: 15 y: 9 vx: 40 vy: 9]
   #system/timer = [resolution: 15]
   #gravity = 2
@@ -103,7 +104,14 @@ Keep the balls within the x boundary
   #ball.x[ix] := #boundary
   #ball.x[ixx] := 0
   #ball.vx[ix] := 0 - 1 * #ball.vx * 80 / 100
-  #ball.vx[ixx] := 0 - 1 * #ball.vx * 80 / 100";
+  #ball.vx[ixx] := 0 - 1 * #ball.vx * 80 / 100
+  
+Set ball to click
+  ~ #html/event/click.x
+  #ball.x := 0
+  #ball.y := 0
+  #ball.vy := 0
+  #ball.vx := 40";
     runner.load_program(String::from(program));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
@@ -154,14 +162,14 @@ impl Handler for ClientHandler {
   }
 }
 
-  pub fn from_adds_removes(adds: Vec<(u64, u64, u64, String)>, removes: Vec<(u64, u64, u64, String)>) -> Transaction {
+  pub fn from_adds_removes(adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)>) -> Transaction {
     let mut txn = Transaction::new();
     for (table, row,column, value) in adds {
-      println!("{:?} {:?}", value, Value::from_string(value.clone()));
-      txn.adds.push(Change::Add{table, row, column, value: Value::from_string(value)});
+      println!("{:?} {:?}", value, Value::from_i64(value.clone()));
+      txn.adds.push(Change::Add{table, row, column, value: Value::from_i64(value)});
     }
     for (table, row,column, value) in removes {
-      txn.removes.push(Change::Remove{table, row, column, value: Value::from_string(value)});
+      txn.removes.push(Change::Remove{table, row, column, value: Value::from_i64(value)});
     }
     txn    
   }
