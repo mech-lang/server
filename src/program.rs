@@ -120,7 +120,6 @@ impl Persister {
         match incoming.recv().unwrap() {
           PersisterMessage::Stop => { break; }
           PersisterMessage::Write(items) => {
-            println!("Let's persist some stuff!");
             for item in items {
               let result = bincode::serialize(&item, bincode::Infinite).unwrap();
               match writer.write_all(&result) {
@@ -186,7 +185,7 @@ impl Persister {
 pub struct ProgramRunner {
   pub name: String,
   pub program: Program, 
-  pub persister: Option<Sender<PersisterMessage>>,
+  pub persistence_channel: Option<Sender<PersisterMessage>>,
 }
 
 impl ProgramRunner {
@@ -195,7 +194,7 @@ impl ProgramRunner {
     ProgramRunner {
       name: name.to_owned(),
       program: Program::new(name, out, capacity),
-      persister: None,
+      persistence_channel: Some(Persister::new("mech-db").get_channel()),
     }
   }
 
@@ -214,11 +213,15 @@ impl ProgramRunner {
     self.program.outgoing.send(RunLoopMessage::Transaction(watcher_table));
   }
 
+  pub fn add_persist_channel(&mut self, persister:&mut Persister) {
+    self.persistence_channel = Some(persister.get_channel());
+  }
 
   pub fn run(self) -> RunLoop {
     let name = self.colored_name();
     let outgoing = self.program.outgoing.clone();
     let mut program = self.program;
+    let persistence_channel = self.persistence_channel;
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
       println!("{} Starting run loop.", name);
       let mut paused = false;
@@ -229,6 +232,12 @@ impl ProgramRunner {
             let pre_changes = program.mech.store.len();
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
+            match persistence_channel {
+              Some(ref channel) => {
+                channel.send(PersisterMessage::Write(vec![(1,2,3,4)])).unwrap();
+              },
+              _ => (),
+            }
             // Handle watchers
             for (watcher_name, dirty) in program.mech.watched_index.iter_mut() {
               if *dirty {
