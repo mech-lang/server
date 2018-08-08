@@ -107,7 +107,7 @@ Keep the balls within the x boundary
   #ball.vx[ixx] := 0 - 1 * #ball.vx * 80 / 100
   
 Set ball to click
-  ~ #html/event/click.x
+  ~ #system/timer.second
   #ball += [x: 2 y: 3 vx: 40 vy: 0]";
     runner.load_program(String::from(program));
     let running = runner.run();
@@ -240,6 +240,12 @@ fn main() {
       .long("address")
       .value_name("ADDRESS")
       .help("Sets the address of the server (127.0.0.1)")
+      .takes_value(true))
+    .arg(Arg::with_name("persist")
+      .short("s")
+      .long("persist")
+      .value_name("FILE")
+      .help("Sets the name for the database to load from and write to")
       .takes_value(true))
     .get_matches();
 
