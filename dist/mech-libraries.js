@@ -440,10 +440,10 @@ var HTML = /** @class */ (function (_super) {
     // ----------------------
     HTML.prototype._mouseEventHandler = function (tagname) {
         var _this = this;
-        var table_id = 6987102065;
+        var table_id = 0x1a076b771;
         return function (event) {
-            _this._sendEvent([[table_id, 1, 1, event.x],
-                [table_id, 1, 2, event.y]]);
+            _this._sendEvent([[table_id, 1, 120, event.x],
+                [table_id, 1, 121, event.y]]);
         };
     };
     HTML.prototype._keyEventHandler = function (tagname) {
