@@ -15,5 +15,6 @@ ws = "0.7.6"
 serde = "1.0.46"
 serde_derive = "1.0.46"
 serde_json = "1.0.17"
+bincode = "0.8"
 mech = {git = "https://gitlab.com/mech-lang/core.git"}
 mech-syntax = {git = "https://gitlab.com/mech-lang/syntax.git"}
