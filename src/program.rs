@@ -188,7 +188,7 @@ impl ProgramRunner {
             let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
             program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
-            //println!("{:?}", program.mech.runtime);
+            //println!("{:?}", program.mech);
             println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           
 

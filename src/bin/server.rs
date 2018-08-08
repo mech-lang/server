@@ -108,10 +108,7 @@ Keep the balls within the x boundary
   
 Set ball to click
   ~ #html/event/click.x
-  #ball.x := 0
-  #ball.y := 0
-  #ball.vy := 0
-  #ball.vx := 40";
+  #ball += [x: 2 y: 3 vx: 40 vy: 0]";
     runner.load_program(String::from(program));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
@@ -131,22 +128,22 @@ impl Handler for ClientHandler {
   }
 
  fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
-    println!("Server got message '{}'. ", msg);
+    //println!("Server got message '{}'. ", msg);
     if let Message::Text(s) = msg {
       let deserialized: Result<ClientMessage, Error> = serde_json::from_str(&s);
-      println!("deserialized = {:?}", deserialized);
+      //println!("deserialized = {:?}", deserialized);
       match deserialized {
           Ok(ClientMessage::Transaction { adds, removes }) => {
-            println!("Txn: {:?} {:?}", adds, removes);
+            //println!("Txn: {:?} {:?}", adds, removes);
             let txn = from_adds_removes(adds, removes);
-            println!("{:?}", txn);
+            //println!("{:?}", txn);
             self.running.send(RunLoopMessage::Transaction(txn));
           }
           Ok(m) => {
-            println!("Unhandled Websocket Message: {:?}", m);
+            //println!("Unhandled Websocket Message: {:?}", m);
           }
           Err(error) => { 
-            println!("Error: {:?}", error);
+            //println!("Error: {:?}", error);
           }
         }
         Ok(())
@@ -165,7 +162,7 @@ impl Handler for ClientHandler {
   pub fn from_adds_removes(adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)>) -> Transaction {
     let mut txn = Transaction::new();
     for (table, row,column, value) in adds {
-      println!("{:?} {:?}", value, Value::from_i64(value.clone()));
+      //println!("{:?} {:?}", value, Value::from_i64(value.clone()));
       txn.adds.push(Change::Add{table, row, column, value: Value::from_i64(value)});
     }
     for (table, row,column, value) in removes {
