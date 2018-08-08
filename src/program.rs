@@ -2,11 +2,15 @@
 
 // # Prelude
 extern crate ws;
+extern crate bincode;
 
 use std::sync::mpsc::{Sender, Receiver, SendError};
 use std::thread::{self, JoinHandle};
 use std::sync::mpsc;
 use std::collections::{HashMap, HashSet, Bound, BTreeMap};
+use std::mem;
+use std::fs::{OpenOptions, File, canonicalize};
+use std::io::{Write, BufReader, BufWriter};
 
 use mech::{Core, Transaction, Change};
 use mech::{Value};
@@ -94,11 +98,95 @@ impl RunLoop {
 
 }
 
+pub enum PersisterMessage {
+    Stop,
+    Write(Vec<(u64, u64, u64, i64)>),
+}
+
+pub struct Persister {
+    thread: JoinHandle<()>,
+    outgoing: Sender<PersisterMessage>,
+    loaded: Vec<(u64, u64, u64, i64)>,
+}
+
+impl Persister {
+  pub fn new(path_ref:&str) -> Persister {
+    let (outgoing, incoming) = mpsc::channel();
+    let path = path_ref.to_string();
+    let thread = thread::spawn(move || {
+      let file = OpenOptions::new().append(true).create(true).open(&path).unwrap();
+      let mut writer = BufWriter::new(file);
+      loop {
+        match incoming.recv().unwrap() {
+          PersisterMessage::Stop => { break; }
+          PersisterMessage::Write(items) => {
+            println!("Let's persist some stuff!");
+            for item in items {
+              let result = bincode::serialize(&item, bincode::Infinite).unwrap();
+              match writer.write_all(&result) {
+                Err(e) => {panic!("Can't persist! {:?}", e); }
+                Ok(_) => { }
+              }
+            }
+            writer.flush().unwrap();
+          }
+        }
+      }
+    });
+    Persister { outgoing, thread, loaded: vec![] }
+  }
+
+  pub fn load(&mut self, path:&str) {
+    let file = match File::open(path) {
+      Ok(f) => f,
+      Err(_) => {
+        println!("Unable to load db: {}", path);
+        return;
+      }
+    };
+    let mut reader = BufReader::new(file);
+    loop {
+      let result:Result<(u64, u64, u64, i64), _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
+      match result {
+        Ok(c) => {
+          println!("{:?}", c);
+          self.loaded.push(c);
+        },
+        Err(info) => {
+          println!("ran out {:?}", info);
+          break;
+        }
+      }
+    }
+  }
+
+  pub fn send(&self, changes:Vec<(u64, u64, u64, i64)>) {
+      self.outgoing.send(PersisterMessage::Write(changes)).unwrap();
+  }
+
+  pub fn wait(self) {
+      self.thread.join().unwrap();
+  }
+
+  pub fn get_channel(&self) -> Sender<PersisterMessage> {
+      self.outgoing.clone()
+  }
+
+  pub fn get_commits(&mut self) -> Vec<(u64, u64, u64, i64)> {
+      mem::replace(&mut self.loaded, vec![])
+  }
+
+  pub fn close(&self) {
+      self.outgoing.send(PersisterMessage::Stop).unwrap();
+  }
+}
+
 // ## Program Runner
 
 pub struct ProgramRunner {
   pub name: String,
   pub program: Program, 
+  pub persister: Option<Sender<PersisterMessage>>,
 }
 
 impl ProgramRunner {
@@ -107,6 +195,7 @@ impl ProgramRunner {
     ProgramRunner {
       name: name.to_owned(),
       program: Program::new(name, out, capacity),
+      persister: None,
     }
   }
 
