@@ -194,7 +194,7 @@ impl ProgramRunner {
     ProgramRunner {
       name: name.to_owned(),
       program: Program::new(name, out, capacity),
-      persistence_channel: Some(Persister::new("mech-db").get_channel()),
+      persistence_channel: Some(Persister::new(name).get_channel()),
     }
   }
 
