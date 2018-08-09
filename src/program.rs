@@ -234,7 +234,16 @@ impl ProgramRunner {
             program.mech.process_transaction(&txn);
             match persistence_channel {
               Some(ref channel) => {
-                channel.send(PersisterMessage::Write(vec![(1,2,3,4)])).unwrap();
+                let mut to_persist: Vec<(u64,u64,u64,i64)> = Vec::new();
+                for add in txn.adds {
+                  match add {
+                    Change::Add{table, row, column, value} => {
+                      to_persist.push((table,row,column,value.as_i64().unwrap()));
+                    },
+                    _ => (),
+                  }
+                } 
+                channel.send(PersisterMessage::Write(to_persist));
               },
               _ => (),
             }
