@@ -36,4 +36,4 @@ Keep the balls within the x boundary
 
 Create ball on click
   ~ #html/event/click.x
-  #ball += [x: 2 y: 3 vx: 400 vy: 400]
+  #ball += [x: 2 y: 3 vx: 40 vy: 0]
