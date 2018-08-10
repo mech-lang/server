@@ -102,10 +102,10 @@ impl Handler for ClientHandler {
             self.running.send(RunLoopMessage::Transaction(txn));
           }
           Ok(m) => {
-            //println!("Unhandled Websocket Message: {:?}", m);
+            println!("Unhandled Websocket Message: {:?}", m);
           }
           Err(error) => { 
-            //println!("Error: {:?}", error);
+            println!("Error: {:?}", error);
           }
         }
         Ok(())
