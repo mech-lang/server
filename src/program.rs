@@ -54,7 +54,7 @@ impl Program {
 
   pub fn compile_string(&mut self, input: String) {
     let mut compiler = Compiler::new();
-    compiler.compile_string(input);    
+    compiler.compile_string(input);
     self.mech.runtime.register_blocks(compiler.blocks, &mut self.mech.store);
   }
 
