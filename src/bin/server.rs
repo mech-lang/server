@@ -35,6 +35,8 @@ use std::thread;
 use std::sync::{Arc, Mutex};
 use std::ops::Deref;
 use std::collections::HashSet;
+use std::fs::{self, File};
+use std::io::Read;
 
 extern crate term_painter;
 use self::term_painter::ToStyle;
@@ -55,6 +57,9 @@ use mech_server::watchers::websocket::{WebsocketClientWatcher};
 extern crate rand;
 use rand::{Rng, thread_rng};
 
+extern crate walkdir;
+use walkdir::WalkDir;
+
 // ## Client Handler
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -71,45 +76,41 @@ pub struct ClientHandler {
 }
 
 impl ClientHandler {
-  pub fn new(client_name: &str, out: WSSender) -> ClientHandler {
+  pub fn new(client_name: &str, out: WSSender, mech_paths: &Vec<&str>) -> ClientHandler {
     let mut runner = ProgramRunner::new(client_name, out.clone(), 1500000);
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
     runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
-    let program = "# Bouncing Balls
-
-Define the environment
-  #html/event/click = [x: 0 y: 0]
-  #ball = [x: 15 y: 9 vx: 40 vy: 9]
-  #system/timer = [resolution: 15]
-  #gravity = 2
-  #boundary = 5000
-
-Now update the block positions
-  ~ #system/timer.tick
-  #ball.x := #ball.x + #ball.vx
-  #ball.y := #ball.y + #ball.vy
-  #ball.vy := #ball.vy + #gravity
-
-Keep the balls within the y boundary
-  ~ #ball.x
-  iy = #ball.y > #boundary
-  #ball.y[iy] := #boundary
-  #ball.vy[iy] := 0 - 1 * #ball.vy * 80 / 100
-
-Keep the balls within the x boundary
-  ~ #ball.y
-  ix = #ball.x > #boundary
-  ixx = #ball.x < 0
-  #ball.x[ix] := #boundary
-  #ball.x[ixx] := 0
-  #ball.vx[ix] := 0 - 1 * #ball.vx * 80 / 100
-  #ball.vx[ixx] := 0 - 1 * #ball.vx * 80 / 100
-  
-Set ball to click
-  ~ #html/event/click.x
-  #ball += [x: 2 y: 3 vx: 40 vy: 0]";
-    runner.load_program(String::from(program));
+    // Load programs from supplied directories
+    // Read the supplied paths for valid mech files
+    let mut paths = Vec::new();
+    for path in mech_paths {
+      let metadata = fs::metadata(path).expect(&format!("Invalid path: {:?}", path));
+      if metadata.is_file() {
+          paths.push(path.to_string());
+      } else if metadata.is_dir() {
+        for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
+          if entry.file_type().is_file() {
+            let ext = entry.path().extension().map(|x| x.to_str().unwrap());
+            match ext {
+              // Parse .mec and .md files. Add more extensions here to parse those.
+              Some("mec") | Some("md") => {
+                  paths.push(entry.path().canonicalize().unwrap().to_str().unwrap().to_string());
+              },
+              _ => {}
+            }
+          }
+        }
+      }
+    }
+    // Read each file and parse it
+    for cur_path in paths {
+        println!("{} {}", BrightCyan.paint("Compiling:"), cur_path.replace("\\","/"));
+        let mut file = File::open(&cur_path).expect("Unable to open the file");
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).expect("Unable to read the file");
+        runner.load_program(contents);
+    }
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
@@ -201,14 +202,14 @@ fn http_server(address: String) -> std::thread::JoinHandle<()> {
 
 // ## Websocket Connection
 
-fn websocket_server(address: String) {
+fn websocket_server(address: String, mech_paths: Vec<&str>) {
   println!("{} Websocket Server at {}... ", BrightGreen.paint("Starting:"), address);
   let mut ix = 0;
   
   match listen(address, |out| {
     ix += 1;
     let client_name = format!("ws_client_{}", ix);
-    ClientHandler::new(&client_name, out) 
+    ClientHandler::new(&client_name, out, &mech_paths) 
   }) {
     Ok(_) => {},
     Err(why) => println!("{} Failed to start Websocket Server: {}", BrightRed.paint("Error:"), why),
@@ -223,6 +224,10 @@ fn main() {
     .version("0.0.1")
     .author("Corey Montella")
     .about("Creates an instance of a Mech server. Default values for options are in parentheses.")
+    .arg(Arg::with_name("mech_file_paths")
+      .help("The files and folders from which to load .mec files")
+      .required(true)
+      .multiple(true))
     .arg(Arg::with_name("port")
       .short("p")
       .long("port")
@@ -254,7 +259,8 @@ fn main() {
   let address = matches.value_of("address").unwrap_or("127.0.0.1");
   let http_address = format!("{}:{}",address,hport);
   let websocket_address = format!("{}:{}",address,wport);
+  let mech_paths = matches.values_of("mech_file_paths").map_or(vec![], |files| files.collect());
 
   http_server(http_address);
-  websocket_server(websocket_address);
+  websocket_server(websocket_address, mech_paths);
 }
