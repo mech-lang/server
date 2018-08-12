@@ -94,11 +94,10 @@ fn http_server(address: String) -> std::thread::JoinHandle<()> {
 fn websocket_server(address: String, mech_paths: Vec<&str>) {
   println!("{} Websocket Server at {}... ", BrightGreen.paint("Starting:"), address);
   let mut ix = 0;
-  
   match listen(address, |out| {
     ix += 1;
     let client_name = format!("ws_client_{}", ix);
-    ClientHandler::new(&client_name, out, &mech_paths) 
+    ClientHandler::new(&client_name, out, &mech_paths)
   }) {
     Ok(_) => {},
     Err(why) => println!("{} Failed to start Websocket Server: {}", BrightRed.paint("Error:"), why),
@@ -115,7 +114,7 @@ fn main() {
     .about("Creates an instance of a Mech server. Default values for options are in parentheses.")
     .arg(Arg::with_name("mech_file_paths")
       .help("The files and folders from which to load .mec files")
-      .required(true)
+      .required(false)
       .multiple(true))
     .arg(Arg::with_name("port")
       .short("p")
