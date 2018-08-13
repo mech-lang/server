@@ -42,12 +42,12 @@ extern crate term_painter;
 use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 
-extern crate mech;
-use mech::{Core, Change, Transaction};
-use mech::Value;
-use mech::{TableIndex, Hasher};
-use mech::{Block, Constraint};
-use mech::{Function, Comparator};
+extern crate mech_core;
+use mech_core::{Core, Change, Transaction};
+use mech_core::Value;
+use mech_core::{TableIndex, Hasher};
+use mech_core::{Block, Constraint};
+use mech_core::{Function, Comparator};
 
 extern crate mech_server;
 use mech_server::program::{ProgramRunner, RunLoop, RunLoopMessage};
