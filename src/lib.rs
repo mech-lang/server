@@ -63,7 +63,6 @@ use rand::{Rng, thread_rng};
 extern crate walkdir;
 use walkdir::WalkDir;
 
-
 // ## Modules
 
 pub mod program;
@@ -80,10 +79,10 @@ impl AfterMiddleware for Custom404 {
   }
 }
 
-pub fn http_server(address: String) -> std::thread::JoinHandle<()> {
+pub fn http_server(address: String,) -> std::thread::JoinHandle<()> {
   thread::spawn(move || {
     let mut mount = Mount::new();
-    mount.mount("/", Static::new(Path::new("assets/index.html")));
+    mount.mount("/", Static::new(Path::new("index.html")));
     mount.mount("/assets/", Static::new(Path::new("assets/")));
     mount.mount("/dist/", Static::new(Path::new("dist/")));
 
