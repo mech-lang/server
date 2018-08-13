@@ -2,9 +2,9 @@
 
 // ## Prelude
 
-extern crate mech;
-use mech::{Interner, Change};
-use mech::Value;
+extern crate mech_core;
+use mech_core::{Interner, Change};
+use mech_core::Value;
 
 // ## Watchers
 
