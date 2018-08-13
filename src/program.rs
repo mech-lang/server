@@ -12,10 +12,10 @@ use std::mem;
 use std::fs::{OpenOptions, File, canonicalize};
 use std::io::{Write, BufReader, BufWriter};
 
-use mech::{Core, Transaction, Change};
-use mech::{Value};
-use mech::Block;
-use mech::{TableIndex, Hasher};
+use mech_core::{Core, Transaction, Change};
+use mech_core::{Value};
+use mech_core::Block;
+use mech_core::{TableIndex, Hasher};
 use mech_syntax::lexer::Lexer;
 use mech_syntax::parser::{Parser, ParseStatus, Node};
 use mech_syntax::compiler::Compiler;

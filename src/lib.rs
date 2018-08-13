@@ -3,7 +3,7 @@
 // ## Prelude
 #![feature(extern_prelude)]
 
-extern crate mech;
+extern crate mech_core;
 extern crate mech_syntax;
 extern crate time;
 #[macro_use]

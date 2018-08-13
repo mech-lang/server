@@ -8,7 +8,7 @@ use serde_json::{Error};
 use std::fs::{self, File};
 use std::io::Read;
 
-use mech::{Core, Change, Transaction, Value};
+use mech_core::{Core, Change, Transaction, Value};
 use term_painter::ToStyle;
 use term_painter::Color::*;
 
