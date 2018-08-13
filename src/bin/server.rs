@@ -61,49 +61,6 @@ use rand::{Rng, thread_rng};
 extern crate walkdir;
 use walkdir::WalkDir;
 
-// ## Static File Server
-
-struct Custom404;
-
-impl AfterMiddleware for Custom404 {
-  fn catch(&self, _: &mut Request, _: IronError) -> IronResult<Response> {
-      Ok(Response::with((status::NotFound, "File not found...")))
-  }
-}
-
-fn http_server(address: String) -> std::thread::JoinHandle<()> {
-  thread::spawn(move || {
-    let mut mount = Mount::new();
-    mount.mount("/", Static::new(Path::new("assets/index.html")));
-    mount.mount("/assets/", Static::new(Path::new("assets/")));
-    mount.mount("/dist/", Static::new(Path::new("dist/")));
-
-    let mut chain = Chain::new(mount);
-    chain.link_after(Custom404);
-
-    println!("{} HTTP Server at {}... ", BrightGreen.paint("Starting:"), address);
-    match Iron::new(chain).http(&address) {
-      Ok(_) => {},
-      Err(why) => println!("{} Failed to start HTTP Server: {}", BrightRed.paint("Error:"), why),
-    };
-  })
-}
-
-// ## Websocket Connection
-
-fn websocket_server(address: String, mech_paths: Vec<&str>) {
-  println!("{} Websocket Server at {}... ", BrightGreen.paint("Starting:"), address);
-  let mut ix = 0;
-  match listen(address, |out| {
-    ix += 1;
-    let client_name = format!("ws_client_{}", ix);
-    ClientHandler::new(&client_name, out, &mech_paths)
-  }) {
-    Ok(_) => {},
-    Err(why) => println!("{} Failed to start Websocket Server: {}", BrightRed.paint("Error:"), why),
-  };
-}
-
 // ## Server Entry
 
 fn main() {
@@ -149,6 +106,6 @@ fn main() {
   let websocket_address = format!("{}:{}",address,wport);
   let mech_paths = matches.values_of("mech_file_paths").map_or(vec![], |files| files.collect());
 
-  http_server(http_address);
-  websocket_server(websocket_address, mech_paths);
+  mech_server::http_server(http_address);
+  mech_server::websocket_server(websocket_address, mech_paths);
 }
