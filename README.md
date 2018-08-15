@@ -6,13 +6,12 @@ Read about progress on our [blog](https://mechlang.net/blog/), follow us on Twit
 
 # Mech Server
 
-Mech Server is the way most users will work with Mech. It hosts a websocket server that accepts connections from a Mech notebook. The main contribution of this module is the notion of a `Program`, which is essentially a network of Mech cores. The program can start up any number of cores on any number of threads, either remotely or locally.
+Mech Server is the way most users will work with Mech. It hosts a websocket server that accepts connections from a Mech notebook. The main contribution of this module is the notion of a `Program`, which is a network of Mech cores.
 
-## Build
+## Contents
 
-```
-cargo build --bin server --release
-```
+- client - defines a protocol for accepting messages from websocket clients, and a `ClientHandler` that implements this protocol.
+- program - defines a `Program`, which starts a Mech core on an OS thread; and a `Program Runner`, which marshalls messages to and from that thread.
 
 ## License
 
