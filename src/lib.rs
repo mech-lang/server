@@ -82,9 +82,7 @@ impl AfterMiddleware for Custom404 {
 pub fn http_server(address: String,) -> std::thread::JoinHandle<()> {
   thread::spawn(move || {
     let mut mount = Mount::new();
-    mount.mount("/", Static::new(Path::new("assets/index.html")));
-    mount.mount("css", Static::new(Path::new("assets/css")));
-    mount.mount("dist", Static::new(Path::new("notebook/dist")));
+    mount.mount("/", Static::new(Path::new("index.html")));
 
     let mut chain = Chain::new(mount);
     chain.link_after(Custom404);
