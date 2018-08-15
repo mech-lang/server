@@ -287,7 +287,9 @@ impl ProgramRunner {
                     Some(n) => n,
                     None => 0,
                   };
-                  adds.push((*table, *row, *column, i64_value));
+                  // TODO this is a hack for now to send col ixes over to the client. In the future, we'll need to send the id->col mapping.
+                  let column_ix: u64 = program.mech.store.tables.get(*table).unwrap().get_column_index(*column).unwrap().clone() as u64;
+                  adds.push((*table, *row, column_ix, i64_value));
                 },
                 _ => (),
               }
