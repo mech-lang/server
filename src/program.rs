@@ -100,13 +100,13 @@ impl RunLoop {
 
 pub enum PersisterMessage {
     Stop,
-    Write(Vec<(u8, u64, u64, u64, Value)>),
+    Write(Vec<Change>),
 }
 
 pub struct Persister {
     thread: JoinHandle<()>,
     outgoing: Sender<PersisterMessage>,
-    loaded: Vec<(u8, u64, u64, u64, Value)>,
+    loaded: Vec<Change>,
 }
 
 impl Persister {
@@ -145,11 +145,10 @@ impl Persister {
     };
     let mut reader = BufReader::new(file);
     loop {
-      let result:Result<(u8, u64, u64, u64, Value), _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
+      let result:Result<Change, _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
       match result {
-        Ok(c) => {
-          println!("{:?}", c);
-          self.loaded.push(c);
+        Ok(change) => {
+          self.loaded.push(change);
         },
         Err(info) => {
           println!("ran out {:?}", info);
@@ -159,7 +158,7 @@ impl Persister {
     }
   }
 
-  pub fn send(&self, changes:Vec<(u8, u64, u64, u64, Value)>) {
+  pub fn send(&self, changes: Vec<Change>) {
       self.outgoing.send(PersisterMessage::Write(changes)).unwrap();
   }
 
@@ -171,7 +170,7 @@ impl Persister {
       self.outgoing.clone()
   }
 
-  pub fn get_commits(&mut self) -> Vec<(u8, u64, u64, u64, Value)> {
+  pub fn get_changes(&mut self) -> Vec<Change> {
       mem::replace(&mut self.loaded, vec![])
   }
 
@@ -191,13 +190,23 @@ pub struct ProgramRunner {
 impl ProgramRunner {
 
   pub fn new(name:&str, out: WSSender, capacity: usize) -> ProgramRunner {
+    // Start a new program
+    let mut program = Program::new(name, out, capacity);
+
+    // Start a persister
     let persist_name = format!("{}.mdb", name);
     let mut persister = Persister::new(&persist_name);
     persister.load(&persist_name);
+    let changes = persister.get_changes();
+
+    // Intern the changes loaded into the persister
+    for change in changes {
+      program.mech.store.intern_change(&change);
+    }
 
     ProgramRunner {
       name: name.to_owned(),
-      program: Program::new(name, out, capacity),
+      program,
       // TODO Use the persistence file specified by the user
       persistence_channel: Some(persister.get_channel()),
     }
@@ -246,18 +255,10 @@ impl ProgramRunner {
             program.mech.process_transaction(&txn);
             match persistence_channel {
               Some(ref channel) => {
-                let mut to_persist: Vec<(u8, u64, u64, u64, Value)> = Vec::new();
+                let mut to_persist: Vec<Change> = Vec::new();
                 for i in program.mech.last_transaction .. program.mech.store.change_pointer {
                   let change = &program.mech.store.changes[i];
-                  match change {
-                    Change::Set{table, row, column, value} => {
-                      to_persist.push((1, *table, *row, *column, value.clone()));
-                    },
-                    Change::Remove{table, row, column, value} => {
-                      to_persist.push((2, *table, *row, *column, value.clone()));
-                    },
-                    _ => (),
-                  }
+                  to_persist.push(change.clone());
                 }
                 channel.send(PersisterMessage::Write(to_persist));
               },
