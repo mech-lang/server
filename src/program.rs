@@ -237,7 +237,7 @@ impl ProgramRunner {
                 let mut to_persist: Vec<(u64,u64,u64,i64)> = Vec::new();
                 for add in txn.adds {
                   match add {
-                    Change::Add{table, row, column, value} => {
+                    Change::Set{table, row, column, value} => {
                       to_persist.push((table,row,column,value.as_i64().unwrap()));
                     },
                     _ => (),
@@ -256,7 +256,7 @@ impl ProgramRunner {
                     for i in program.mech.last_transaction .. program.mech.store.change_pointer {
                       let change = &program.mech.store.changes[i];
                       match change {
-                        Change::Add{table, row, column, value} => {
+                        Change::Set{table, row, column, value} => {
                           if table == watcher_name {
                             diff.adds.push((*table, *row, *column, value.as_i64().unwrap()));
                           }
@@ -282,7 +282,7 @@ impl ProgramRunner {
             for i in program.mech.last_transaction .. program.mech.store.change_pointer {
               let change = &program.mech.store.changes[i];
               match change {
-                Change::Add{table, row, column, value} => {
+                Change::Set{table, row, column, value} => {
                   let i64_value = match value.as_i64() {
                     Some(n) => n,
                     None => 0,

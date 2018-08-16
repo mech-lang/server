@@ -36,7 +36,7 @@ impl Watcher for WebsocketClientWatcher {
   }
   fn on_diff(&mut self, interner:&mut Interner, diff: WatchDiff) {  
 
-    //Change::Add{table, row, column, value} => (String::from("html/export instances"), *table, *row, *column, value.as_u64()),
+    //Change::Set{table, row, column, value} => (String::from("html/export instances"), *table, *row, *column, value.as_u64()),
     let text = serde_json::to_string(&json!({"type": "diff", "adds": diff.adds, "removes": diff.removes, "client": self.client_name})).unwrap();
     self.websocket_out.send(Message::Text(text)).unwrap();
     

@@ -50,15 +50,15 @@ impl Watcher for SystemTimerWatcher {
             let cur_time = time::now();
             let now = time::precise_time_ns();
             let txn = Transaction::from_changeset(vec![
-              Change::Add{table, row, column: Hasher::hash_str("year"), value: Value::from_u64(cur_time.tm_year as u64 + 1900)},
-              Change::Add{table, row, column: Hasher::hash_str("day"), value: Value::from_u64(cur_time.tm_mday as u64)},
-              Change::Add{table, row, column: Hasher::hash_str("month"), value: Value::from_u64(cur_time.tm_mon as u64 + 1)},
-              Change::Add{table, row, column: Hasher::hash_str("hour"), value: Value::from_u64(cur_time.tm_hour as u64)},
-              Change::Add{table, row, column: Hasher::hash_str("minute"), value: Value::from_u64(cur_time.tm_min as u64)},
-              Change::Add{table, row, column: Hasher::hash_str("second"), value: Value::from_u64(cur_time.tm_sec as u64)},
-              Change::Add{table, row, column: Hasher::hash_str("nano-second"), value: Value::from_u64(cur_time.tm_nsec as u64)},
-              Change::Add{table, row, column: Hasher::hash_str("tick"), value: Value::from_u64(tick)},
-              Change::Add{table, row, column: Hasher::hash_str("dt"), value: Value::from_u64(now - last)},
+              Change::Set{table, row, column: Hasher::hash_str("year"), value: Value::from_u64(cur_time.tm_year as u64 + 1900)},
+              Change::Set{table, row, column: Hasher::hash_str("day"), value: Value::from_u64(cur_time.tm_mday as u64)},
+              Change::Set{table, row, column: Hasher::hash_str("month"), value: Value::from_u64(cur_time.tm_mon as u64 + 1)},
+              Change::Set{table, row, column: Hasher::hash_str("hour"), value: Value::from_u64(cur_time.tm_hour as u64)},
+              Change::Set{table, row, column: Hasher::hash_str("minute"), value: Value::from_u64(cur_time.tm_min as u64)},
+              Change::Set{table, row, column: Hasher::hash_str("second"), value: Value::from_u64(cur_time.tm_sec as u64)},
+              Change::Set{table, row, column: Hasher::hash_str("nano-second"), value: Value::from_u64(cur_time.tm_nsec as u64)},
+              Change::Set{table, row, column: Hasher::hash_str("tick"), value: Value::from_u64(tick)},
+              Change::Set{table, row, column: Hasher::hash_str("dt"), value: Value::from_u64(now - last)},
             ]);     
             tick += 1;
             last = now;

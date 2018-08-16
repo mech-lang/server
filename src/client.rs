@@ -125,7 +125,7 @@ impl Handler for ClientHandler {
     let mut txn = Transaction::new();
     for (table, row,column, value) in adds {
       //println!("{:?} {:?}", value, Value::from_i64(value.clone()));
-      txn.adds.push(Change::Add{table, row, column, value: Value::from_i64(value)});
+      txn.adds.push(Change::Set{table, row, column, value: Value::from_i64(value)});
     }
     for (table, row,column, value) in removes {
       txn.removes.push(Change::Remove{table, row, column, value: Value::from_i64(value)});
