@@ -37,7 +37,7 @@ pub struct ClientHandler {
 }
 
 impl ClientHandler {
-  pub fn new(client_name: &str, out: WSSender, mech_paths: &Vec<&str>) -> ClientHandler {
+  pub fn new(client_name: &str, out: WSSender, mech_paths: &Vec<&str>, persistence_path: &str) -> ClientHandler {
     let mut runner = ProgramRunner::new(client_name, out.clone(), 1500000);
     let outgoing = runner.program.outgoing.clone();
     runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));

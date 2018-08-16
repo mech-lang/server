@@ -99,13 +99,13 @@ pub fn http_server(address: String,) -> std::thread::JoinHandle<()> {
 
 // ## Websocket Connection
 
-pub fn websocket_server(address: String, mech_paths: Vec<&str>) {
+pub fn websocket_server(address: String, mech_paths: Vec<&str>, persistence_path: &str) {
   println!("{} Websocket Server at {}... ", BrightGreen.paint("Starting:"), address);
   let mut ix = 0;
   match listen(address, |out| {
     ix += 1;
     let client_name = format!("ws_client_{}", ix);
-    ClientHandler::new(&client_name, out, &mech_paths)
+    ClientHandler::new(&client_name, out, &mech_paths, &persistence_path)
   }) {
     Ok(_) => {},
     Err(why) => println!("{} Failed to start Websocket Server: {}", BrightRed.paint("Error:"), why),
