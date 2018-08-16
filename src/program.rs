@@ -100,13 +100,13 @@ impl RunLoop {
 
 pub enum PersisterMessage {
     Stop,
-    Write(Vec<(u64, u64, u64, i64)>),
+    Write(Vec<(u8, u64, u64, u64, i64)>),
 }
 
 pub struct Persister {
     thread: JoinHandle<()>,
     outgoing: Sender<PersisterMessage>,
-    loaded: Vec<(u64, u64, u64, i64)>,
+    loaded: Vec<(u8, u64, u64, u64, i64)>,
 }
 
 impl Persister {
@@ -145,7 +145,7 @@ impl Persister {
     };
     let mut reader = BufReader::new(file);
     loop {
-      let result:Result<(u64, u64, u64, i64), _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
+      let result:Result<(u8, u64, u64, u64, i64), _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
       match result {
         Ok(c) => {
           println!("{:?}", c);
@@ -159,7 +159,7 @@ impl Persister {
     }
   }
 
-  pub fn send(&self, changes:Vec<(u64, u64, u64, i64)>) {
+  pub fn send(&self, changes:Vec<(u8, u64, u64, u64, i64)>) {
       self.outgoing.send(PersisterMessage::Write(changes)).unwrap();
   }
 
@@ -171,7 +171,7 @@ impl Persister {
       self.outgoing.clone()
   }
 
-  pub fn get_commits(&mut self) -> Vec<(u64, u64, u64, i64)> {
+  pub fn get_commits(&mut self) -> Vec<(u8, u64, u64, u64, i64)> {
       mem::replace(&mut self.loaded, vec![])
   }
 
@@ -234,11 +234,14 @@ impl ProgramRunner {
             program.mech.process_transaction(&txn);
             match persistence_channel {
               Some(ref channel) => {
-                let mut to_persist: Vec<(u64,u64,u64,i64)> = Vec::new();
+                let mut to_persist: Vec<(u8, u64,u64,u64,i64)> = Vec::new();
                 for add in txn.adds {
                   match add {
                     Change::Set{table, row, column, value} => {
-                      to_persist.push((table,row,column,value.as_i64().unwrap()));
+                      to_persist.push((1, table,row,column,value.as_i64().unwrap()));
+                    },
+                    Change::Remove{table, row, column, value} => {
+                      to_persist.push((2, table,row,column,value.as_i64().unwrap()));
                     },
                     _ => (),
                   }
@@ -260,7 +263,7 @@ impl ProgramRunner {
                           if table == watcher_name {
                             diff.adds.push((*table, *row, *column, value.as_i64().unwrap()));
                           }
-                        }
+                        },
                         _ => (),
                       }
                     }
@@ -297,7 +300,7 @@ impl ProgramRunner {
             let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
             program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
-            //println!("{:?}", program.mech);
+            println!("{:?}", program.mech.store.changes);
             println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           
 
