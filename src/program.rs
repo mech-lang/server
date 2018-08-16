@@ -194,7 +194,8 @@ impl ProgramRunner {
     ProgramRunner {
       name: name.to_owned(),
       program: Program::new(name, out, capacity),
-      persistence_channel: Some(Persister::new(name).get_channel()),
+      // TODO Use the persistence file specified by the user
+      persistence_channel: Some(Persister::new(&format!("{}.mdb", name)).get_channel()),
     }
   }
 
