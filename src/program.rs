@@ -100,13 +100,13 @@ impl RunLoop {
 
 pub enum PersisterMessage {
     Stop,
-    Write(Vec<(u8, u64, u64, u64, i64)>),
+    Write(Vec<(u8, u64, u64, u64, Value)>),
 }
 
 pub struct Persister {
     thread: JoinHandle<()>,
     outgoing: Sender<PersisterMessage>,
-    loaded: Vec<(u8, u64, u64, u64, i64)>,
+    loaded: Vec<(u8, u64, u64, u64, Value)>,
 }
 
 impl Persister {
@@ -135,7 +135,7 @@ impl Persister {
     Persister { outgoing, thread, loaded: vec![] }
   }
 
-  pub fn load(&mut self, path:&str) {
+  pub fn load(&mut self, path: &str) {
     let file = match File::open(path) {
       Ok(f) => f,
       Err(_) => {
@@ -145,7 +145,7 @@ impl Persister {
     };
     let mut reader = BufReader::new(file);
     loop {
-      let result:Result<(u8, u64, u64, u64, i64), _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
+      let result:Result<(u8, u64, u64, u64, Value), _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
       match result {
         Ok(c) => {
           println!("{:?}", c);
@@ -159,7 +159,7 @@ impl Persister {
     }
   }
 
-  pub fn send(&self, changes:Vec<(u8, u64, u64, u64, i64)>) {
+  pub fn send(&self, changes:Vec<(u8, u64, u64, u64, Value)>) {
       self.outgoing.send(PersisterMessage::Write(changes)).unwrap();
   }
 
@@ -171,7 +171,7 @@ impl Persister {
       self.outgoing.clone()
   }
 
-  pub fn get_commits(&mut self) -> Vec<(u8, u64, u64, u64, i64)> {
+  pub fn get_commits(&mut self) -> Vec<(u8, u64, u64, u64, Value)> {
       mem::replace(&mut self.loaded, vec![])
   }
 
@@ -191,11 +191,15 @@ pub struct ProgramRunner {
 impl ProgramRunner {
 
   pub fn new(name:&str, out: WSSender, capacity: usize) -> ProgramRunner {
+    let persist_name = format!("{}.mdb", name);
+    let mut persister = Persister::new(&persist_name);
+    persister.load(&persist_name);
+
     ProgramRunner {
       name: name.to_owned(),
       program: Program::new(name, out, capacity),
       // TODO Use the persistence file specified by the user
-      persistence_channel: Some(Persister::new(&format!("{}.mdb", name)).get_channel()),
+      persistence_channel: Some(persister.get_channel()),
     }
   }
 
@@ -223,6 +227,13 @@ impl ProgramRunner {
     let outgoing = self.program.outgoing.clone();
     let mut program = self.program;
     let persistence_channel = self.persistence_channel;
+     match persistence_channel {
+      Some(ref channel) => {
+        //channel.send(PersisterMessage::Write(to_persist));
+      },
+      _ => (),
+    }
+    println!("{} Applying stored changes...", name);
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
       println!("{} Starting run loop.", name);
       let mut paused = false;
@@ -235,18 +246,19 @@ impl ProgramRunner {
             program.mech.process_transaction(&txn);
             match persistence_channel {
               Some(ref channel) => {
-                let mut to_persist: Vec<(u8, u64,u64,u64,i64)> = Vec::new();
-                for add in txn.adds {
-                  match add {
+                let mut to_persist: Vec<(u8, u64, u64, u64, Value)> = Vec::new();
+                for i in program.mech.last_transaction .. program.mech.store.change_pointer {
+                  let change = &program.mech.store.changes[i];
+                  match change {
                     Change::Set{table, row, column, value} => {
-                      to_persist.push((1, table,row,column,value.as_i64().unwrap()));
+                      to_persist.push((1, *table, *row, *column, value.clone()));
                     },
                     Change::Remove{table, row, column, value} => {
-                      to_persist.push((2, table,row,column,value.as_i64().unwrap()));
+                      to_persist.push((2, *table, *row, *column, value.clone()));
                     },
                     _ => (),
                   }
-                } 
+                }
                 channel.send(PersisterMessage::Write(to_persist));
               },
               _ => (),
@@ -301,7 +313,7 @@ impl ProgramRunner {
             let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
             program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
-            println!("{:?}", program.mech.store.changes);
+            //println!("{:?}", program.mech.store.changes);
             println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           
 
