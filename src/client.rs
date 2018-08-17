@@ -115,7 +115,7 @@ impl Handler for ClientHandler {
   }
 
   fn on_close(&mut self, code: CloseCode, reason: &str) {
-    println!("WebSocket closing for ({:?}) {}", code, reason);
+    //println!("WebSocket closing for ({:?}) {}", code, reason);
     //self.router.lock().unwrap().unregister(&self.client_name);
     self.running.close();
   }
