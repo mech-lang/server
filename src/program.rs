@@ -325,6 +325,9 @@ impl ProgramRunner {
           },
           (Ok(RunLoopMessage::Pause), false) => paused = true,
           (Ok(RunLoopMessage::Resume), true) => paused = false,
+          (Ok(RunLoopMessage::StepBack), _) => {
+            paused = true;
+          } 
           (Err(_), _) => break 'runloop,
           _ => (),
         }
