@@ -254,7 +254,7 @@ impl ProgramRunner {
       'runloop: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
-            println!("{} Txn started", name);
+            //println!("{} Txn started", name);
             let pre_changes = program.mech.store.len();
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
@@ -320,7 +320,7 @@ impl ProgramRunner {
             program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
             //println!("{:?}", program.mech.store.changes);
-            println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
+            //rintln!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           },
           (Ok(RunLoopMessage::Stop), _) => break 'runloop,
           (Ok(RunLoopMessage::Pause), false) => paused = true,
