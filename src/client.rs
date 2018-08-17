@@ -111,7 +111,7 @@ impl Handler for ClientHandler {
               5 => self.running.send(RunLoopMessage::Pause),
               6 => self.running.send(RunLoopMessage::Resume),
               7 => self.running.send(RunLoopMessage::Clean),
-              _ => (),
+              _ => Err("Unknown client message"),
             };
           },
           Ok(m) => println!("Unhandled Websocket Message: {:?}", m),
