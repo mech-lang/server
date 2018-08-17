@@ -92,8 +92,11 @@ impl RunLoop {
     }
   }
 
-  pub fn send(&self, msg: RunLoopMessage) {
-    self.outgoing.send(msg).unwrap();
+  pub fn send(&self, msg: RunLoopMessage) -> Result<(),&str> {
+    match self.outgoing.send(msg) {
+      Ok(_) => Ok(()),
+      Err(_) => Err("Failed to send message"),
+    }
   }
 
   pub fn channel(&self) -> Sender<RunLoopMessage> {
@@ -314,9 +317,12 @@ impl ProgramRunner {
             program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
             //println!("{:?}", program.mech.store.changes);
-            //rintln!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
+            //println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           },
-          (Ok(RunLoopMessage::Stop), _) => break 'runloop,
+          (Ok(RunLoopMessage::Stop), _) => { 
+            paused = true;
+            break 'runloop;
+          },
           (Ok(RunLoopMessage::Pause), false) => paused = true,
           (Ok(RunLoopMessage::Resume), true) => paused = false,
           (Err(_), _) => break 'runloop,
