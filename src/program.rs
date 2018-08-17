@@ -205,6 +205,7 @@ impl ProgramRunner {
     let changes = persister.get_changes();
 
     // Intern the changes loaded into the persister
+    println!("{} Applying {} stored changes...", BrightCyan.paint(format!("[{}]", name)), changes.len());
     for change in changes {
       program.mech.store.intern_change(&change);
     }
@@ -241,13 +242,6 @@ impl ProgramRunner {
     let outgoing = self.program.outgoing.clone();
     let mut program = self.program;
     let persistence_channel = self.persistence_channel;
-     match persistence_channel {
-      Some(ref channel) => {
-        //channel.send(PersisterMessage::Write(to_persist));
-      },
-      _ => (),
-    }
-    println!("{} Applying stored changes...", name);
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
       println!("{} Starting run loop.", name);
       let mut paused = false;
