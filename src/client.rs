@@ -80,12 +80,12 @@ impl ClientHandler {
 impl Handler for ClientHandler {
 
   fn on_open(&mut self, handshake: Handshake) -> Result<(),ws::Error> {
-    println!("Connection Opened: {:?}", handshake);
+    //println!("Connection Opened: {:?}", handshake);
     Ok(())
   }
 
   fn on_request(&mut self, req: &ws::Request) -> Result<ws::Response, ws::Error> {
-    println!("Handler received request:\n{:?}", req);
+    //println!("Handler received request:\n{:?}", req);
     ws::Response::from_request(req)
   }
 
