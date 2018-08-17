@@ -64,13 +64,13 @@ impl Program {
 
 #[derive(Debug, Clone)]
 pub enum RunLoopMessage {
+  Reset,
   Stop,
+  StepBack,
+  StepForward,
   Pause,
   Resume,
   Clean,
-  Reset,
-  StepBack,
-  StepForward,
   Transaction(Transaction),
 }
 
