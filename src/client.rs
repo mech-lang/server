@@ -66,7 +66,7 @@ impl ClientHandler {
     }
     // Read each file and parse it
     for cur_path in paths {
-        println!("{} {}", BrightCyan.paint("Compiling:"), cur_path.replace("\\","/"));
+        println!("{} {} {}", BrightCyan.paint(format!("[{}]", client_name)), BrightGreen.paint("Compiling:"), cur_path.replace("\\","/"));
         let mut file = File::open(&cur_path).expect("Unable to open the file");
         let mut contents = String::new();
         file.read_to_string(&mut contents).expect("Unable to read the file");
