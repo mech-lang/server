@@ -67,6 +67,8 @@ pub enum RunLoopMessage {
   Stop,
   Pause,
   Resume,
+  Clean,
+  Reset,
   StepBack,
   StepForward,
   Transaction(Transaction),
@@ -126,9 +128,8 @@ impl Persister {
           PersisterMessage::Write(items) => {
             for item in items {
               let result = bincode::serialize(&item, bincode::Infinite).unwrap();
-              match writer.write_all(&result) {
-                Err(e) => {panic!("Can't persist! {:?}", e); }
-                Ok(_) => { }
+              if let Err(e) = writer.write_all(&result) {
+                panic!("Can't persist! {:?}", e);
               }
             }
             writer.flush().unwrap();
@@ -324,9 +325,14 @@ impl ProgramRunner {
           (Ok(RunLoopMessage::Stop), _) => break 'runloop,
           (Ok(RunLoopMessage::Pause), false) => paused = true,
           (Ok(RunLoopMessage::Resume), true) => paused = false,
+          (Err(_), _) => break 'runloop,
           _ => (),
         }
       }
+      if let Some(channel) = persistence_channel {
+        channel.send(PersisterMessage::Stop);
+      }
+      println!("{} Run loop closed.", name);
     }).unwrap();
     RunLoop { thread, outgoing }
   }
