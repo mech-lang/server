@@ -67,6 +67,8 @@ pub enum RunLoopMessage {
   Stop,
   Pause,
   Resume,
+  StepBack,
+  StepForward,
   Transaction(Transaction),
 }
 
@@ -97,6 +99,8 @@ impl RunLoop {
   }
 
 }
+
+// ## Persister
 
 pub enum PersisterMessage {
     Stop,
@@ -159,23 +163,23 @@ impl Persister {
   }
 
   pub fn send(&self, changes: Vec<Change>) {
-      self.outgoing.send(PersisterMessage::Write(changes)).unwrap();
+    self.outgoing.send(PersisterMessage::Write(changes)).unwrap();
   }
 
   pub fn wait(self) {
-      self.thread.join().unwrap();
+    self.thread.join().unwrap();
   }
 
   pub fn get_channel(&self) -> Sender<PersisterMessage> {
-      self.outgoing.clone()
+    self.outgoing.clone()
   }
 
   pub fn get_changes(&mut self) -> Vec<Change> {
-      mem::replace(&mut self.loaded, vec![])
+    mem::replace(&mut self.loaded, vec![])
   }
 
   pub fn close(&self) {
-      self.outgoing.send(PersisterMessage::Stop).unwrap();
+    self.outgoing.send(PersisterMessage::Stop).unwrap();
   }
 }
 
@@ -246,7 +250,7 @@ impl ProgramRunner {
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
       println!("{} Starting run loop.", name);
       let mut paused = false;
-      'outer: loop {
+      'runloop: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
             println!("{} Txn started", name);
@@ -316,14 +320,10 @@ impl ProgramRunner {
             //program.compile_string(String::from(text.clone()));
             //println!("{:?}", program.mech.store.changes);
             println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
-          
-
-
-
           },
-          (Ok(RunLoopMessage::Stop), _) => {
-            paused = true;
-          }
+          (Ok(RunLoopMessage::Stop), _) => break 'runloop,
+          (Ok(RunLoopMessage::Pause), false) => paused = true,
+          (Ok(RunLoopMessage::Resume), true) => paused = false,
           _ => (),
         }
       }
