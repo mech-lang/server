@@ -103,7 +103,16 @@ impl Handler for ClientHandler {
             self.running.send(RunLoopMessage::Transaction(txn));
           },
           Ok(ClientMessage::Control{kind}) => {
-            println!("CONTROL {:?}", kind);
+            match kind {
+              1 => self.running.send(RunLoopMessage::Reset),
+              2 => self.running.send(RunLoopMessage::Stop),
+              3 => self.running.send(RunLoopMessage::StepBack),
+              4 => self.running.send(RunLoopMessage::StepForward),
+              5 => self.running.send(RunLoopMessage::Pause),
+              6 => self.running.send(RunLoopMessage::Resume),
+              7 => self.running.send(RunLoopMessage::Clean),
+              _ => (),
+            };
           },
           Ok(m) => println!("Unhandled Websocket Message: {:?}", m),
           Err(error) => println!("Error: {:?}", error),
