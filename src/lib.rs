@@ -84,6 +84,7 @@ pub fn http_server(address: String,) -> std::thread::JoinHandle<()> {
     let mut mount = Mount::new();
     mount.mount("/", Static::new(Path::new("assets/index.html")));
     mount.mount("css", Static::new(Path::new("assets/css")));
+    mount.mount("images", Static::new(Path::new("assets/images")));
     mount.mount("dist", Static::new(Path::new("notebook/dist")));
 
     let mut chain = Chain::new(mount);
