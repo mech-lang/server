@@ -23,9 +23,10 @@ use walkdir::WalkDir;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
-    Block { id: String, code: String },
-    RemoveBlock { id: String },
-    Transaction { adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)> },
+  Control { kind: u8 },
+  Block { id: String, code: String },
+  RemoveBlock { id: String },
+  Transaction { adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)> },
 }
 
 // ## Client Handler
@@ -100,13 +101,12 @@ impl Handler for ClientHandler {
             let txn = from_adds_removes(adds, removes);
             //println!("{:?}", txn);
             self.running.send(RunLoopMessage::Transaction(txn));
-          }
-          Ok(m) => {
-            println!("Unhandled Websocket Message: {:?}", m);
-          }
-          Err(error) => { 
-            println!("Error: {:?}", error);
-          }
+          },
+          Ok(ClientMessage::Control{kind}) => {
+            println!("CONTROL {:?}", kind);
+          },
+          Ok(m) => println!("Unhandled Websocket Message: {:?}", m),
+          Err(error) => println!("Error: {:?}", error),
         }
         Ok(())
     } else {
