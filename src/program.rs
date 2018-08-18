@@ -345,12 +345,8 @@ impl ProgramRunner {
               let history = program.mech.store.transaction_boundaries.len() as i64 - 1;
               let mut start: i64 = history - time as i64;
               let mut end: i64 = history - time as i64 - 1;
-              if history > 1 && end > 0  {
-                time += 1;
-              }
               let start_ix = program.mech.store.transaction_boundaries[start as usize];
               let end_ix = program.mech.store.transaction_boundaries[end as usize];
-              // Send transaction over wire
               let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
               let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
               for n in (end_ix..start_ix).rev() {
@@ -385,8 +381,57 @@ impl ProgramRunner {
               }
               let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
               program.out.send(Message::Text(text)).unwrap();
+              if history > 1 && end > 0  {
+                time += 1;
+              }
             }
-            
+          }
+          (Ok(RunLoopMessage::StepForward), true) => {
+            println!("{:?}", program.mech.store.transaction_boundaries);
+            let history = program.mech.store.transaction_boundaries.len() as i64 - 1;
+            let mut start: i64 = history - time as i64;
+            let mut end: i64 = history - time as i64 + 1;
+            if end < history {
+              let start_ix = program.mech.store.transaction_boundaries[start as usize];
+              let end_ix = program.mech.store.transaction_boundaries[end as usize];
+              let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
+              let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+              for n in start_ix..end_ix {
+                let change = program.mech.store.changes[n].clone();
+                match change {
+                  Change::Set{table, row, column, value} => {
+                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
+                    let i64_value = match value.as_i64() {
+                      Some(n) => n,
+                      None => 0,
+                    };
+                    adds.push((table, row, column_ix, i64_value));
+                    program.mech.store.intern_change(
+                      &Change::Set{table, row, column, value},
+                      false
+                    );
+                  },
+                  Change::Remove{table, row, column, value} => {
+                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
+                    let i64_value = match value.as_i64() {
+                      Some(n) => n,
+                      None => 0,
+                    };
+                    removes.push((table, row, column_ix, i64_value));
+                    program.mech.store.intern_change(
+                      &Change::Remove{table, row, column, value},
+                      false
+                    );
+                  },
+                  _ => (),
+                };
+              }
+              let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
+              program.out.send(Message::Text(text)).unwrap();
+            }
+            if time > 0 {
+              time -= 1;
+            }
           } 
           (Err(_), _) => break 'runloop,
           _ => (),
