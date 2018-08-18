@@ -210,8 +210,11 @@ impl ProgramRunner {
     // Intern the changes loaded into the persister
     println!("{} Applying {} stored changes...", BrightCyan.paint(format!("[{}]", name)), changes.len());
     for change in changes {
-      program.mech.store.intern_change(&change);
+      program.mech.store.intern_change(&change, false);
     }
+    // Store first transaction boundary manually, since these changes weren't added in a transaction.
+    // TODO fix this hack by making a transaction type that will process changes one at a time in order, not all adds then all removes.
+    program.mech.store.transaction_boundaries.push(program.mech.store.change_pointer);
 
     ProgramRunner {
       name: name.to_owned(),
@@ -329,6 +332,7 @@ impl ProgramRunner {
           },
           (Ok(RunLoopMessage::Resume), true) => {
             paused = false;
+            time = 0;
             println!("{} Run loop resumed.", name);
           },
           (Ok(RunLoopMessage::StepBack), _) => {
@@ -338,14 +342,49 @@ impl ProgramRunner {
             }
             // If the database hasn't rolled over yet
             if program.mech.store.rollover == 0 {
-              println!("{:?}", program.mech.store.transaction_boundaries);
               let history = program.mech.store.transaction_boundaries.len() as i64 - 1;
               let mut start: i64 = history - time as i64;
               let mut end: i64 = history - time as i64 - 1;
               if history > 1 && end > 0  {
                 time += 1;
               }
-              println!("{}->{}", program.mech.store.transaction_boundaries[start as usize], program.mech.store.transaction_boundaries[end as usize]);
+              let start_ix = program.mech.store.transaction_boundaries[start as usize];
+              let end_ix = program.mech.store.transaction_boundaries[end as usize];
+              // Send transaction over wire
+              let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
+              let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+              for n in (end_ix..start_ix).rev() {
+                let change = program.mech.store.changes[n].clone();
+                match change {
+                  Change::Set{table, row, column, value} => {
+                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
+                    let i64_value = match value.as_i64() {
+                      Some(n) => n,
+                      None => 0,
+                    };
+                    removes.push((table, row, column_ix, i64_value));
+                    program.mech.store.intern_change(
+                      &Change::Remove{table, row, column, value},
+                      false
+                    );
+                  },
+                  Change::Remove{table, row, column, value} => {
+                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
+                    let i64_value = match value.as_i64() {
+                      Some(n) => n,
+                      None => 0,
+                    };
+                    adds.push((table, row, column_ix, i64_value));
+                    program.mech.store.intern_change(
+                      &Change::Set{table, row, column, value},
+                      false
+                    );
+                  },
+                  _ => (),
+                };
+              }
+              let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
+              program.out.send(Message::Text(text)).unwrap();
             }
             
           } 
