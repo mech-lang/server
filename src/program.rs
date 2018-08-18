@@ -328,7 +328,7 @@ impl ProgramRunner {
           },
           (Ok(RunLoopMessage::Pause), false) => { 
             paused = true;
-            println!("{} Run loop paused.", name);
+            println!("{} Run loop paused.", name);            
           },
           (Ok(RunLoopMessage::Resume), true) => {
             paused = false;
@@ -387,7 +387,6 @@ impl ProgramRunner {
             }
           }
           (Ok(RunLoopMessage::StepForward), true) => {
-            println!("{:?}", program.mech.store.transaction_boundaries);
             let history = program.mech.store.transaction_boundaries.len() as i64 - 1;
             let mut start: i64 = history - time as i64;
             let mut end: i64 = history - time as i64 + 1;
@@ -434,6 +433,8 @@ impl ProgramRunner {
             }
           } 
           (Err(_), _) => break 'runloop,
+          (Ok(RunLoopMessage::Clean), _) => println!("{:?}",program.mech,),
+          (Ok(RunLoopMessage::Reset), _) => println!("{:?}",program.mech.runtime,),
           _ => (),
         }
       }
