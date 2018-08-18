@@ -248,6 +248,7 @@ impl ProgramRunner {
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
       println!("{} Starting run loop.", name);
       let mut paused = false;
+      let mut time: usize = 0;
       'runloop: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
@@ -335,6 +336,18 @@ impl ProgramRunner {
               paused = true;
               println!("{} Run loop paused.", name);
             }
+            // If the database hasn't rolled over yet
+            if program.mech.store.rollover == 0 {
+              println!("{:?}", program.mech.store.transaction_boundaries);
+              let history = program.mech.store.transaction_boundaries.len() as i64 - 1;
+              let mut start: i64 = history - time as i64;
+              let mut end: i64 = history - time as i64 - 1;
+              if history > 1 && end > 0  {
+                time += 1;
+              }
+              println!("{}->{}", program.mech.store.transaction_boundaries[start as usize], program.mech.store.transaction_boundaries[end as usize]);
+            }
+            
           } 
           (Err(_), _) => break 'runloop,
           _ => (),
