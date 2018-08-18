@@ -320,13 +320,21 @@ impl ProgramRunner {
             //println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           },
           (Ok(RunLoopMessage::Stop), _) => { 
-            paused = true;
             break 'runloop;
           },
-          (Ok(RunLoopMessage::Pause), false) => paused = true,
-          (Ok(RunLoopMessage::Resume), true) => paused = false,
-          (Ok(RunLoopMessage::StepBack), _) => {
+          (Ok(RunLoopMessage::Pause), false) => { 
             paused = true;
+            println!("{} Run loop paused.", name);
+          },
+          (Ok(RunLoopMessage::Resume), true) => {
+            paused = false;
+            println!("{} Run loop resumed.", name);
+          },
+          (Ok(RunLoopMessage::StepBack), _) => {
+            if !paused {
+              paused = true;
+              println!("{} Run loop paused.", name);
+            }
           } 
           (Err(_), _) => break 'runloop,
           _ => (),
