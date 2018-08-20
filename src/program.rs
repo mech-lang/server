@@ -33,6 +33,7 @@ use self::ws::{Sender as WSSender, Message};
 pub struct Program {
   pub name: String,
   pub mech: Core,
+  capacity: usize,
   watchers: HashMap<u64, Box<Watcher + Send>>,
   pub out: WSSender,
   pub incoming: Receiver<RunLoopMessage>,
@@ -44,6 +45,7 @@ impl Program {
     let (outgoing, incoming) = mpsc::channel();
     Program { 
       name: name.to_owned(), 
+      capacity,
       mech: Core::new(capacity, 100),
       watchers: HashMap::new(),
       out,
@@ -55,7 +57,12 @@ impl Program {
   pub fn compile_string(&mut self, input: String) {
     let mut compiler = Compiler::new();
     compiler.compile_string(input);
-    self.mech.runtime.register_blocks(compiler.blocks, &mut self.mech.store);
+    self.mech.register_blocks(compiler.blocks);
+    //self.mech.step();
+  }
+
+  pub fn clear(&mut self) {
+    self.mech.clear_program();
   }
 
 }
@@ -70,8 +77,11 @@ pub enum RunLoopMessage {
   StepForward,
   Pause,
   Resume,
-  Clean,
+  Clear,
+  Database,
+  History,
   Transaction(Transaction),
+  Code(String),
 }
 
 pub struct RunLoop {
@@ -255,7 +265,7 @@ impl ProgramRunner {
       'runloop: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
-            //println!("{} Txn started", name);
+            //println!("{} Txn started:\n {:?}", name, txn);
             let pre_changes = program.mech.store.len();
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
@@ -320,7 +330,7 @@ impl ProgramRunner {
             let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
             program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
-            //println!("{:?}", program.mech.store.changes);
+            //println!("{:?}", program.mech);
             //println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
           },
           (Ok(RunLoopMessage::Stop), _) => { 
@@ -432,9 +442,46 @@ impl ProgramRunner {
               time -= 1;
             }
           } 
+          (Ok(RunLoopMessage::Code(code)), _) => {
+            println!("{} Loading code\n{:?}", name, code);
+            program.clear();
+            program.compile_string(code);
+            println!("{:?}", program.mech.runtime);
+            let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
+            let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+            
+            for i in program.mech.last_transaction .. program.mech.store.change_pointer {
+              let change = &program.mech.store.changes[i];
+              match change {
+                Change::Set{table, row, column, value} => {
+                  let i64_value = match value.as_i64() {
+                    Some(n) => n,
+                    None => 0,
+                  };
+                  // TODO this is a hack for now to send col ixes over to the client. In the future, we'll need to send the id->col mapping.
+                  let column_ix: u64 = program.mech.store.tables.get(*table).unwrap().get_column_index(*column).unwrap().clone() as u64;
+                  adds.push((*table, *row, column_ix, i64_value));
+                },
+                _ => (),
+              }
+            }
+            let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
+            program.out.send(Message::Text(text)).unwrap();
+            program.outgoing.send(RunLoopMessage::Transaction(Transaction::new()));
+          } 
           (Err(_), _) => break 'runloop,
-          (Ok(RunLoopMessage::Clean), _) => println!("{:?}",program.mech,),
-          (Ok(RunLoopMessage::Reset), _) => println!("{:?}",program.mech.runtime,),
+          (Ok(RunLoopMessage::Clear), _) => {
+            println!("{} Clearing program.", name);
+            program.clear()
+          },
+          (Ok(RunLoopMessage::Reset), _) => println!("{}\n{:?}",name, program.mech.runtime),
+          (Ok(RunLoopMessage::Database), _) => println!("{}\n{:?}",name, program.mech),
+          (Ok(RunLoopMessage::History), _) => {
+            println!("{} History", name);
+            for change in &program.mech.store.changes {
+              println!("{:?}", change);
+            }
+          },
           _ => (),
         }
       }
