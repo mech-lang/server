@@ -24,7 +24,7 @@ use walkdir::WalkDir;
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientMessage {
   Control { kind: u8 },
-  Block { id: String, code: String },
+  Code { code: String },
   RemoveBlock { id: String },
   Transaction { adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)> },
 }
@@ -110,9 +110,14 @@ impl Handler for ClientHandler {
               4 => self.running.send(RunLoopMessage::StepForward),
               5 => self.running.send(RunLoopMessage::Pause),
               6 => self.running.send(RunLoopMessage::Resume),
-              7 => self.running.send(RunLoopMessage::Clean),
+              7 => self.running.send(RunLoopMessage::Clear),
+              8 => self.running.send(RunLoopMessage::Database),
+              9 => self.running.send(RunLoopMessage::History),
               _ => Err("Unknown client message"),
             };
+          },
+          Ok(ClientMessage::Code{code}) => {
+            self.running.send(RunLoopMessage::Code(code));
           },
           Ok(m) => println!("Unhandled Websocket Message: {:?}", m),
           Err(error) => println!("Error: {:?}", error),
