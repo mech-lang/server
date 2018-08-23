@@ -43,10 +43,14 @@ pub struct Program {
 impl Program {
   pub fn new(name:&str, out: WSSender, capacity: usize) -> Program {
     let (outgoing, incoming) = mpsc::channel();
+    let mut mech = Core::new(capacity, 100);
+    let mech_code = Hasher::hash_str("mech/code");
+    let txn = Transaction::from_change(Change::NewTable{id: mech_code, rows: 1, columns: 1});
+    mech.process_transaction(&txn);
     Program { 
       name: name.to_owned(), 
       capacity,
-      mech: Core::new(capacity, 100),
+      mech,
       watchers: HashMap::new(),
       out,
       incoming, 
@@ -56,8 +60,11 @@ impl Program {
 
   pub fn compile_string(&mut self, input: String) {
     let mut compiler = Compiler::new();
-    compiler.compile_string(input);
+    compiler.compile_string(input.clone());
     self.mech.register_blocks(compiler.blocks);
+    let mech_code = Hasher::hash_str("mech/code");
+    let txn = Transaction::from_change(Change::Set{table: mech_code, row: 1, column: 1, value: Value::from_str(&input.clone())});
+    self.outgoing.send(RunLoopMessage::Transaction(txn));
     //self.mech.step();
   }
 
@@ -309,20 +316,16 @@ impl ProgramRunner {
             let time = (end_ns - start_ns) as f64;              
             // Send changes to connected clients
             // TODO Handle rollover of changes
-            let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
-            let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+            let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
+            let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
             
             for i in program.mech.last_transaction .. program.mech.store.change_pointer {
               let change = &program.mech.store.changes[i];
               match change {
                 Change::Set{table, row, column, value} => {
-                  let i64_value = match value.as_i64() {
-                    Some(n) => n,
-                    None => 0,
-                  };
                   // TODO this is a hack for now to send col ixes over to the client. In the future, we'll need to send the id->col mapping.
                   let column_ix: u64 = program.mech.store.tables.get(*table).unwrap().get_column_index(*column).unwrap().clone() as u64;
-                  adds.push((*table, *row, column_ix, i64_value));
+                  adds.push((*table, *row, column_ix, value.clone()));
                 },
                 _ => (),
               }
@@ -357,32 +360,24 @@ impl ProgramRunner {
               let mut end: i64 = history - time as i64 - 1;
               let start_ix = program.mech.store.transaction_boundaries[start as usize];
               let end_ix = program.mech.store.transaction_boundaries[end as usize];
-              let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
-              let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+              let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
+              let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
               for n in (end_ix..start_ix).rev() {
                 let change = program.mech.store.changes[n].clone();
                 match change {
                   Change::Set{table, row, column, value} => {
                     let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    let i64_value = match value.as_i64() {
-                      Some(n) => n,
-                      None => 0,
-                    };
-                    removes.push((table, row, column_ix, i64_value));
+                    removes.push((table, row, column_ix, value.clone()));
                     program.mech.store.intern_change(
-                      &Change::Remove{table, row, column, value},
+                      &Change::Remove{table, row, column, value: value.clone()},
                       false
                     );
                   },
                   Change::Remove{table, row, column, value} => {
                     let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    let i64_value = match value.as_i64() {
-                      Some(n) => n,
-                      None => 0,
-                    };
-                    adds.push((table, row, column_ix, i64_value));
+                    adds.push((table, row, column_ix, value.clone()));
                     program.mech.store.intern_change(
-                      &Change::Set{table, row, column, value},
+                      &Change::Set{table, row, column, value: value.clone()},
                       false
                     );
                   },
@@ -403,32 +398,24 @@ impl ProgramRunner {
             if end < history {
               let start_ix = program.mech.store.transaction_boundaries[start as usize];
               let end_ix = program.mech.store.transaction_boundaries[end as usize];
-              let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
-              let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+              let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
+              let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
               for n in start_ix..end_ix {
                 let change = program.mech.store.changes[n].clone();
                 match change {
                   Change::Set{table, row, column, value} => {
                     let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    let i64_value = match value.as_i64() {
-                      Some(n) => n,
-                      None => 0,
-                    };
-                    adds.push((table, row, column_ix, i64_value));
+                    removes.push((table, row, column_ix, value.clone()));
                     program.mech.store.intern_change(
-                      &Change::Set{table, row, column, value},
+                      &Change::Set{table, row, column, value: value.clone()},
                       false
                     );
                   },
                   Change::Remove{table, row, column, value} => {
                     let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    let i64_value = match value.as_i64() {
-                      Some(n) => n,
-                      None => 0,
-                    };
-                    removes.push((table, row, column_ix, i64_value));
+                    adds.push((table, row, column_ix, value.clone()));
                     program.mech.store.intern_change(
-                      &Change::Remove{table, row, column, value},
+                      &Change::Remove{table, row, column, value: value.clone()},
                       false
                     );
                   },
@@ -447,20 +434,16 @@ impl ProgramRunner {
             program.clear();
             program.compile_string(code);
             println!("{:?}", program.mech.runtime);
-            let mut adds: Vec<(u64,u64,u64,i64)> = Vec::new();
-            let mut removes: Vec<(u64,u64,u64,i64)> = Vec::new();
+            let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
+            let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
             
             for i in program.mech.last_transaction .. program.mech.store.change_pointer {
               let change = &program.mech.store.changes[i];
               match change {
-                Change::Set{table, row, column, value} => {
-                  let i64_value = match value.as_i64() {
-                    Some(n) => n,
-                    None => 0,
-                  };
+                Change::Set{table, row, column, ref value} => {
                   // TODO this is a hack for now to send col ixes over to the client. In the future, we'll need to send the id->col mapping.
                   let column_ix: u64 = program.mech.store.tables.get(*table).unwrap().get_column_index(*column).unwrap().clone() as u64;
-                  adds.push((*table, *row, column_ix, i64_value));
+                  adds.push((*table, *row, column_ix, value.clone()));
                 },
                 _ => (),
               }
