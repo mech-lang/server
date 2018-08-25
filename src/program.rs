@@ -314,24 +314,6 @@ impl ProgramRunner {
             let delta_changes = program.mech.store.len() - pre_changes;
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;              
-            // Send changes to connected clients
-            // TODO Handle rollover of changes
-            let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
-            let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
-            
-            for i in program.mech.last_transaction .. program.mech.store.change_pointer {
-              let change = &program.mech.store.changes[i];
-              match change {
-                Change::Set{table, row, column, value} => {
-                  // TODO this is a hack for now to send col ixes over to the client. In the future, we'll need to send the id->col mapping.
-                  let column_ix: u64 = program.mech.store.tables.get(*table).unwrap().get_column_index(*column).unwrap().clone() as u64;
-                  adds.push((*table, *row, column_ix, value.clone()));
-                },
-                _ => (),
-              }
-            }
-            let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
-            program.out.send(Message::Text(text)).unwrap();
             //program.compile_string(String::from(text.clone()));
             //println!("{:?}", program.mech);
             //println!("{} Txn took {:0.4?} ms ({:0.0?} cps)", name, time / 1_000_000.0, delta_changes as f64 / (time / 1.0e9));
@@ -360,32 +342,6 @@ impl ProgramRunner {
               let mut end: i64 = history - time as i64 - 1;
               let start_ix = program.mech.store.transaction_boundaries[start as usize];
               let end_ix = program.mech.store.transaction_boundaries[end as usize];
-              let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
-              let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
-              for n in (end_ix..start_ix).rev() {
-                let change = program.mech.store.changes[n].clone();
-                match change {
-                  Change::Set{table, row, column, value} => {
-                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    removes.push((table, row, column_ix, value.clone()));
-                    program.mech.store.intern_change(
-                      &Change::Remove{table, row, column, value: value.clone()},
-                      false
-                    );
-                  },
-                  Change::Remove{table, row, column, value} => {
-                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    adds.push((table, row, column_ix, value.clone()));
-                    program.mech.store.intern_change(
-                      &Change::Set{table, row, column, value: value.clone()},
-                      false
-                    );
-                  },
-                  _ => (),
-                };
-              }
-              let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
-              program.out.send(Message::Text(text)).unwrap();
               if history > 1 && end > 0  {
                 time += 1;
               }
@@ -398,32 +354,6 @@ impl ProgramRunner {
             if end < history {
               let start_ix = program.mech.store.transaction_boundaries[start as usize];
               let end_ix = program.mech.store.transaction_boundaries[end as usize];
-              let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
-              let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
-              for n in start_ix..end_ix {
-                let change = program.mech.store.changes[n].clone();
-                match change {
-                  Change::Set{table, row, column, value} => {
-                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    removes.push((table, row, column_ix, value.clone()));
-                    program.mech.store.intern_change(
-                      &Change::Set{table, row, column, value: value.clone()},
-                      false
-                    );
-                  },
-                  Change::Remove{table, row, column, value} => {
-                    let column_ix: u64 = program.mech.store.tables.get(table).unwrap().get_column_index(column).unwrap().clone() as u64;
-                    adds.push((table, row, column_ix, value.clone()));
-                    program.mech.store.intern_change(
-                      &Change::Remove{table, row, column, value: value.clone()},
-                      false
-                    );
-                  },
-                  _ => (),
-                };
-              }
-              let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
-              program.out.send(Message::Text(text)).unwrap();
             }
             if time > 0 {
               time -= 1;
@@ -434,23 +364,6 @@ impl ProgramRunner {
             program.clear();
             program.compile_string(code);
             println!("{:?}", program.mech.runtime);
-            let mut adds: Vec<(u64,u64,u64,Value)> = Vec::new();
-            let mut removes: Vec<(u64,u64,u64,Value)> = Vec::new();
-            
-            for i in program.mech.last_transaction .. program.mech.store.change_pointer {
-              let change = &program.mech.store.changes[i];
-              match change {
-                Change::Set{table, row, column, ref value} => {
-                  // TODO this is a hack for now to send col ixes over to the client. In the future, we'll need to send the id->col mapping.
-                  let column_ix: u64 = program.mech.store.tables.get(*table).unwrap().get_column_index(*column).unwrap().clone() as u64;
-                  adds.push((*table, *row, column_ix, value.clone()));
-                },
-                _ => (),
-              }
-            }
-            let text = serde_json::to_string(&json!({"type": "diff", "adds": adds, "removes": removes, "client": program.name.clone()})).unwrap();
-            program.out.send(Message::Text(text)).unwrap();
-            program.outgoing.send(RunLoopMessage::Transaction(Transaction::new()));
           } 
           (Err(_), _) => break 'runloop,
           (Ok(RunLoopMessage::Clear), _) => {
