@@ -69,7 +69,7 @@ impl Program {
   }
 
   pub fn clear(&mut self) {
-    self.mech.clear_program();
+    self.mech.clear();
   }
 
 }
@@ -224,10 +224,10 @@ impl ProgramRunner {
     persister.load(&persist_name);
     let changes = persister.get_changes();
 
-    // Intern the changes loaded into the persister
-    println!("{} Applying {} stored changes...", BrightCyan.paint(format!("[{}]", name)), changes.len());
+    // Load database
+    println!("{} Applying {} stored changes...", BrightCyan.paint(format!("[{}]", name)), changes.len());    
     for change in changes {
-      program.mech.store.intern_change(&change, false);
+      program.mech.process_transaction(&Transaction::from_change(change));
     }
     // Store first transaction boundary manually, since these changes weren't added in a transaction.
     // TODO fix this hack by making a transaction type that will process changes one at a time in order, not all adds then all removes.
@@ -245,7 +245,6 @@ impl ProgramRunner {
     self.program.compile_string(input);
   }
 
-  // TODO Move this out of program and into program runner
   pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
     let name = Hasher::hash_str(&watcher.get_name());
     let columns = watcher.get_columns().clone();
@@ -276,6 +275,7 @@ impl ProgramRunner {
             let pre_changes = program.mech.store.len();
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
+            // Handle persistence
             match persistence_channel {
               Some(ref channel) => {
                 let mut to_persist: Vec<Change> = Vec::new();
@@ -298,9 +298,14 @@ impl ProgramRunner {
                       match change {
                         Change::Set{table, row, column, value} => {
                           if table == watcher_name {
-                            diff.adds.push((*table, *row, *column, value.as_i64().unwrap()));
+                            diff.adds.push((*table, *row, *column, *value));
                           }
                         },
+                        Change::Remove{table, row, column, value} => {
+                          if table == watcher_name {
+                            diff.removes.push((*table, *row, *column, *value));
+                          }
+                        },                        
                         _ => (),
                       }
                     }
@@ -335,29 +340,10 @@ impl ProgramRunner {
               paused = true;
               println!("{} Run loop paused.", name);
             }
-            // If the database hasn't rolled over yet
-            if program.mech.store.rollover == 0 {
-              let history = program.mech.store.transaction_boundaries.len() as i64 - 1;
-              let mut start: i64 = history - time as i64;
-              let mut end: i64 = history - time as i64 - 1;
-              let start_ix = program.mech.store.transaction_boundaries[start as usize];
-              let end_ix = program.mech.store.transaction_boundaries[end as usize];
-              if history > 1 && end > 0  {
-                time += 1;
-              }
-            }
+            program.mech.step_back_one();
           }
           (Ok(RunLoopMessage::StepForward), true) => {
-            let history = program.mech.store.transaction_boundaries.len() as i64 - 1;
-            let mut start: i64 = history - time as i64;
-            let mut end: i64 = history - time as i64 + 1;
-            if end < history {
-              let start_ix = program.mech.store.transaction_boundaries[start as usize];
-              let end_ix = program.mech.store.transaction_boundaries[end as usize];
-            }
-            if time > 0 {
-              time -= 1;
-            }
+            program.mech.step_forward_one();
           } 
           (Ok(RunLoopMessage::Code(code)), _) => {
             println!("{} Loading code\n{:?}", name, code);
