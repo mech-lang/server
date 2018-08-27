@@ -54,7 +54,7 @@ use mech_core::{Function, Comparator};
 
 use self::program::{ProgramRunner, RunLoop, RunLoopMessage};
 use self::watchers::system::{SystemTimerWatcher};
-use self::watchers::websocket::{WebsocketClientWatcher};
+//use self::watchers::websocket::{WebsocketClientWatcher};
 use self::client::ClientHandler;
 
 extern crate rand;
