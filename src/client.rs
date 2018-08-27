@@ -99,15 +99,12 @@ impl Handler for ClientHandler {
           },
           Ok(ClientMessage::Control{kind}) => {
             match kind {
-              1 => self.running.send(RunLoopMessage::Reset),
+              1 => self.running.send(RunLoopMessage::Clear),
               2 => self.running.send(RunLoopMessage::Stop),
               3 => self.running.send(RunLoopMessage::StepBack),
               4 => self.running.send(RunLoopMessage::StepForward),
               5 => self.running.send(RunLoopMessage::Pause),
               6 => self.running.send(RunLoopMessage::Resume),
-              7 => self.running.send(RunLoopMessage::Clear),
-              8 => self.running.send(RunLoopMessage::Database),
-              9 => self.running.send(RunLoopMessage::History),
               _ => Err("Unknown client message"),
             };
           },

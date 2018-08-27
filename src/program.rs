@@ -73,15 +73,12 @@ impl Program {
 
 #[derive(Debug, Clone)]
 pub enum RunLoopMessage {
-  Reset,
   Stop,
   StepBack,
   StepForward,
   Pause,
   Resume,
   Clear,
-  Database,
-  History,
   Transaction(Transaction),
   Code(String),
 }
@@ -249,7 +246,6 @@ impl ProgramRunner {
     let thread = thread::Builder::new().name(program.name.to_owned()).spawn(move || {
       println!("{} Starting run loop.", name);
       let mut paused = false;
-      let mut time: usize = 0;
       'runloop: loop {
         match (program.incoming.recv(), paused) {
           (Ok(RunLoopMessage::Transaction(txn)), false) => {
@@ -273,8 +269,8 @@ impl ProgramRunner {
           },
           (Ok(RunLoopMessage::Resume), true) => {
             paused = false;
-            time = 0;
             println!("{} Run loop resumed.", name);
+            program.mech.resume();
           },
           (Ok(RunLoopMessage::StepBack), _) => {
             if !paused {
@@ -292,11 +288,11 @@ impl ProgramRunner {
             program.compile_string(code);
             println!("{:?}", program.mech.runtime);
           } 
-          (Err(_), _) => break 'runloop,
           (Ok(RunLoopMessage::Clear), _) => {
             println!("{} Clearing program.", name);
             program.clear()
           },
+          (Err(_), _) => break 'runloop,
           _ => (),
         }
       }
