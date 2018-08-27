@@ -53,8 +53,6 @@ use mech_core::{Block, Constraint};
 use mech_core::{Function, Comparator};
 
 use self::program::{ProgramRunner, RunLoop, RunLoopMessage};
-use self::watchers::system::{SystemTimerWatcher};
-//use self::watchers::websocket::{WebsocketClientWatcher};
 use self::client::ClientHandler;
 
 extern crate rand;
@@ -66,7 +64,6 @@ use walkdir::WalkDir;
 // ## Modules
 
 pub mod program;
-pub mod watchers;
 pub mod client;
 
 // ## Static File Server

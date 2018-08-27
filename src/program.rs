@@ -25,7 +25,6 @@ use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 use time;
 
-use watchers::{Watcher};
 use self::ws::{Sender as WSSender, Message};
 
 // ## Program
@@ -34,7 +33,6 @@ pub struct Program {
   pub name: String,
   pub mech: Core,
   capacity: usize,
-  watchers: HashMap<u64, Box<Watcher + Send>>,
   pub incoming: Receiver<RunLoopMessage>,
   pub outgoing: Sender<RunLoopMessage>,
 }
@@ -50,7 +48,6 @@ impl Program {
       name: name.to_owned(), 
       capacity,
       mech,
-      watchers: HashMap::new(),
       incoming, 
       outgoing 
     }
@@ -238,15 +235,6 @@ impl ProgramRunner {
 
   pub fn load_program(&mut self, input: String) {
     self.program.compile_string(input);
-  }
-
-  pub fn attach_watcher(&mut self, watcher:Box<Watcher + Send>) {
-    let name = Hasher::hash_str(&watcher.get_name());
-    let columns = watcher.get_columns().clone();
-    println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), &watcher.get_name());
-    self.program.watchers.insert(name, watcher);
-    let watcher_table = Transaction::from_change(Change::NewTable{id: name, rows: 1, columns});
-    self.program.outgoing.send(RunLoopMessage::Transaction(watcher_table));
   }
 
   pub fn add_persist_channel(&mut self, persister:&mut Persister) {

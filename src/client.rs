@@ -13,7 +13,6 @@ use term_painter::ToStyle;
 use term_painter::Color::*;
 
 use program::{ProgramRunner, RunLoop, RunLoopMessage};
-use watchers::system::{SystemTimerWatcher};
 
 use walkdir::WalkDir;
 
@@ -39,8 +38,6 @@ impl ClientHandler {
   pub fn new(client_name: &str, out: WSSender, mech_paths: &Vec<&str>, persistence_path: &str) -> ClientHandler {
     let mut runner = ProgramRunner::new(client_name, 1500000);
     let outgoing = runner.program.outgoing.clone();
-    runner.attach_watcher(Box::new(SystemTimerWatcher::new(outgoing.clone())));
-    //runner.attach_watcher(Box::new(WebsocketClientWatcher::new(outgoing.clone(), out.clone(), client_name)));
     // Load programs from supplied directories
     // Read the supplied paths for valid mech files
     let mut paths = Vec::new();
