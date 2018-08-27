@@ -10,8 +10,8 @@ use mech_core::Value;
 
 #[derive(Debug)]
 pub struct WatchDiff {
-  pub adds: Vec<(u64, u64, u64, i64)>,
-  pub removes: Vec<(u64, u64, u64, i64)>,
+  pub adds: Vec<(u64, u64, u64, Value)>,
+  pub removes: Vec<(u64, u64, u64, Value)>,
 }
 
 impl WatchDiff {
