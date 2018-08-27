@@ -309,21 +309,6 @@ impl ProgramRunner {
             println!("{} Clearing program.", name);
             program.clear()
           },
-          (Ok(RunLoopMessage::Reset), _) => println!("{}\n{:?}",name, program.mech.runtime),
-          (Ok(RunLoopMessage::Database), _) => println!("{}\n{:?}",name, program.mech),
-          (Ok(RunLoopMessage::History), _) => {
-            println!("{} History", name);
-            if program.mech.store.changes.len() < 100 {
-              for change in &program.mech.store.changes {
-                println!("{:?}", change);
-              }
-            } else {
-              for i in (1..100).rev() {
-                println!("{:?}", program.mech.store.changes[program.mech.store.changes.len() - i]);
-              }
-            }
-            
-          },
           _ => (),
         }
       }
