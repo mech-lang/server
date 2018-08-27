@@ -55,7 +55,7 @@ impl ClientHandler {
             match ext {
               // Parse .mec and .md files. Add more extensions here to parse those.
               Some("mec") | Some("md") => {
-                  paths.push(entry.path().canonicalize().unwrap().to_str().unwrap().to_string());
+                paths.push(entry.path().canonicalize().unwrap().to_str().unwrap().to_string());
               },
               _ => {}
             }
