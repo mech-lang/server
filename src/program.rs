@@ -25,7 +25,7 @@ use self::term_painter::ToStyle;
 use self::term_painter::Color::*;
 use time;
 
-use watchers::{Watcher, WatchDiff};
+use watchers::{Watcher};
 use self::ws::{Sender as WSSender, Message};
 
 // ## Program
@@ -35,13 +35,12 @@ pub struct Program {
   pub mech: Core,
   capacity: usize,
   watchers: HashMap<u64, Box<Watcher + Send>>,
-  pub out: WSSender,
   pub incoming: Receiver<RunLoopMessage>,
   pub outgoing: Sender<RunLoopMessage>,
 }
 
 impl Program {
-  pub fn new(name:&str, out: WSSender, capacity: usize) -> Program {
+  pub fn new(name:&str, capacity: usize) -> Program {
     let (outgoing, incoming) = mpsc::channel();
     let mut mech = Core::new(capacity, 100);
     let mech_code = Hasher::hash_str("mech/code");
@@ -52,7 +51,6 @@ impl Program {
       capacity,
       mech,
       watchers: HashMap::new(),
-      out,
       incoming, 
       outgoing 
     }
@@ -214,9 +212,9 @@ pub struct ProgramRunner {
 
 impl ProgramRunner {
 
-  pub fn new(name:&str, out: WSSender, capacity: usize) -> ProgramRunner {
+  pub fn new(name:&str, capacity: usize) -> ProgramRunner {
     // Start a new program
-    let mut program = Program::new(name, out, capacity);
+    let mut program = Program::new(name, capacity);
 
     // Start a persister
     let persist_name = format!("{}.mdb", name);
@@ -229,10 +227,7 @@ impl ProgramRunner {
     for change in changes {
       program.mech.process_transaction(&Transaction::from_change(change));
     }
-    // Store first transaction boundary manually, since these changes weren't added in a transaction.
-    // TODO fix this hack by making a transaction type that will process changes one at a time in order, not all adds then all removes.
-    program.mech.store.transaction_boundaries.push(program.mech.store.change_pointer);
-
+    
     ProgramRunner {
       name: name.to_owned(),
       program,
@@ -249,7 +244,6 @@ impl ProgramRunner {
     let name = Hasher::hash_str(&watcher.get_name());
     let columns = watcher.get_columns().clone();
     println!("{} {} #{}", &self.colored_name(), BrightGreen.paint("Loaded Watcher:"), &watcher.get_name());
-    self.program.mech.register_watcher(name);
     self.program.watchers.insert(name, watcher);
     let watcher_table = Transaction::from_change(Change::NewTable{id: name, rows: 1, columns});
     self.program.outgoing.send(RunLoopMessage::Transaction(watcher_table));
@@ -275,47 +269,6 @@ impl ProgramRunner {
             let pre_changes = program.mech.store.len();
             let start_ns = time::precise_time_ns();
             program.mech.process_transaction(&txn);
-            // Handle persistence
-            match persistence_channel {
-              Some(ref channel) => {
-                let mut to_persist: Vec<Change> = Vec::new();
-                for i in program.mech.last_transaction .. program.mech.store.change_pointer {
-                  let change = &program.mech.store.changes[i];
-                  to_persist.push(change.clone());
-                }
-                channel.send(PersisterMessage::Write(to_persist));
-              },
-              _ => (),
-            }
-            // Handle watchers
-            for (watcher_name, dirty) in program.mech.watched_index.iter_mut() {
-              if *dirty {
-                match program.watchers.get_mut(watcher_name) {
-                  Some(watcher) => {
-                    let mut diff = WatchDiff::new();
-                    for i in program.mech.last_transaction .. program.mech.store.change_pointer {
-                      let change = &program.mech.store.changes[i];
-                      match change {
-                        Change::Set{table, row, column, value} => {
-                          if table == watcher_name {
-                            diff.adds.push((*table, *row, *column, *value));
-                          }
-                        },
-                        Change::Remove{table, row, column, value} => {
-                          if table == watcher_name {
-                            diff.removes.push((*table, *row, *column, *value));
-                          }
-                        },                        
-                        _ => (),
-                      }
-                    }
-                    watcher.on_diff(&mut program.mech.store, diff);
-                    *dirty = false;
-                  },
-                  _ => (),
-                };
-              }
-            }
             let delta_changes = program.mech.store.len() - pre_changes;
             let end_ns = time::precise_time_ns();
             let time = (end_ns - start_ns) as f64;              
