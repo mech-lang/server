@@ -139,10 +139,12 @@ impl Persister {
           PersisterMessage::Stop => { break; }
           PersisterMessage::Write(items) => {
             for item in items {
+              // TODO Implement change serialization
+              /*
               let result = bincode::serialize(&item, bincode::Infinite).unwrap();
               if let Err(e) = writer.write_all(&result) {
                 panic!("Can't persist! {:?}", e);
-              }
+              }*/
             }
             writer.flush().unwrap();
           }
@@ -161,6 +163,8 @@ impl Persister {
       }
     };
     let mut reader = BufReader::new(file);
+    // TODO Implement change deserialization
+    /*
     loop {
       let result:Result<Change, _> = bincode::deserialize_from(&mut reader, bincode::Infinite);
       match result {
@@ -172,7 +176,7 @@ impl Persister {
           break;
         }
       }
-    }
+    }*/
   }
 
   pub fn send(&self, changes: Vec<Change>) {
