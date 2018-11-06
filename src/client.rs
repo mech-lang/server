@@ -8,7 +8,7 @@ use serde_json::{Error};
 use std::fs::{self, File};
 use std::io::Read;
 
-use mech_core::{Core, Change, Transaction, Value};
+use mech_core::{Core, Change, Transaction, Value, Index};
 use term_painter::ToStyle;
 use term_painter::Color::*;
 
@@ -131,10 +131,10 @@ impl Handler for ClientHandler {
     let mut txn = Transaction::new();
     for (table, row,column, value) in adds {
       //println!("{:?} {:?}", value, Value::from_i64(value.clone()));
-      txn.adds.push(Change::Set{table, row, column, value: Value::from_i64(value)});
+      txn.adds.push(Change::Set{table, row: Index::Index(row), column: Index::Index(column), value: Value::from_i64(value)});
     }
     for (table, row,column, value) in removes {
-      txn.removes.push(Change::Remove{table, row, column, value: Value::from_i64(value)});
+      txn.removes.push(Change::Remove{table, row: Index::Index(row), column: Index::Index(column), value: Value::from_i64(value)});
     }
     txn    
   }
