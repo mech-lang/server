@@ -13,7 +13,7 @@ use std::fs::{OpenOptions, File, canonicalize};
 use std::io::{Write, BufReader, BufWriter};
 
 use mech_core::{Core, Transaction, Change};
-use mech_core::{Value};
+use mech_core::{Value, Index};
 use mech_core::Block;
 use mech_core::{TableIndex, Hasher};
 use mech_syntax::lexer::Lexer;
@@ -58,7 +58,7 @@ impl Program {
     compiler.compile_string(input.clone());
     self.mech.register_blocks(compiler.blocks);
     let mech_code = Hasher::hash_str("mech/code");
-    let txn = Transaction::from_change(Change::Set{table: mech_code, row: 1, column: 1, value: Value::from_str(&input.clone())});
+    let txn = Transaction::from_change(Change::Set{table: mech_code, row: Index::Index(1), column: Index::Index(1), value: Value::from_str(&input.clone())});
     self.outgoing.send(RunLoopMessage::Transaction(txn));
     //self.mech.step();
   }
