@@ -8,11 +8,10 @@ use serde_json::{Error};
 use std::fs::{self, File};
 use std::io::Read;
 
+use mech_program::{ProgramRunner, RunLoop, RunLoopMessage};
 use mech_core::{Core, Change, Transaction, Value, Index};
 use term_painter::ToStyle;
 use term_painter::Color::*;
-
-use program::{ProgramRunner, RunLoop, RunLoopMessage};
 
 use walkdir::WalkDir;
 
