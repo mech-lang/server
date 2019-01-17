@@ -46,13 +46,14 @@ use self::term_painter::Color::*;
 
 extern crate mech_core;
 extern crate mech_syntax;
+extern crate mech_program;
 use mech_core::{Core, Change, Transaction};
 use mech_core::Value;
 use mech_core::{TableIndex, Hasher};
 use mech_core::{Block, Constraint};
 use mech_core::{Function, Comparator};
+use mech_program::{ProgramRunner, RunLoop, RunLoopMessage};
 
-use self::program::{ProgramRunner, RunLoop, RunLoopMessage};
 use self::client::ClientHandler;
 
 extern crate rand;
@@ -63,7 +64,6 @@ use walkdir::WalkDir;
 
 // ## Modules
 
-pub mod program;
 pub mod client;
 
 // ## Static File Server
