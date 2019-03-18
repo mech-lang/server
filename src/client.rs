@@ -67,6 +67,16 @@ impl ClientHandler {
         file.read_to_string(&mut contents).expect("Unable to read the file");
         runner.load_program(contents);
     }
+    println!("Found {} errors:", &runner.program.errors.len());
+    for error in &runner.program.errors {
+      println!("{}", BrightYellow.paint("----------------------------------------------------"));
+      println!(" Error:  {:?}", error.error_id);
+      println!(" Block:  {:#x}", error.block);
+      println!(" Line:   {:?}", error.line);
+      println!(" Column: {:?}", error.column);
+      println!("{}", BrightYellow.paint("----------------------------------------------------"));
+    }
+    println!("{:?}", &runner.program.mech);
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
