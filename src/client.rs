@@ -9,7 +9,7 @@ use std::fs::{self, File};
 use std::io::Read;
 
 use mech_program::{ProgramRunner, RunLoop, RunLoopMessage};
-use mech_core::{Core, Change, Transaction, Value, Index};
+use mech_core::{Core, Change, Transaction, Value, Index, ErrorType};
 use term_painter::ToStyle;
 use term_painter::Color::*;
 
@@ -67,16 +67,26 @@ impl ClientHandler {
         file.read_to_string(&mut contents).expect("Unable to read the file");
         runner.load_program(contents);
     }
-    println!("Found {} errors:", &runner.program.errors.len());
+    // Print errors
+    println!("\nFound {} Errors:\n", &runner.program.errors.len());
     for error in &runner.program.errors {
-      println!("{}", BrightYellow.paint("----------------------------------------------------"));
-      println!(" Error:  {:?}", error.error_id);
-      println!(" Block:  {:#x}", error.block);
-      println!(" Line:   {:?}", error.line);
-      println!(" Column: {:?}", error.column);
-      println!("{}", BrightYellow.paint("----------------------------------------------------"));
+      let block = &runner.program.mech.runtime.blocks.get(&(error.block as usize)).unwrap();
+      println!("{} {} {} {}\n ", BrightYellow.paint("--"), Yellow.paint("Block"), block.name, BrightYellow.paint("---------------------------------------"));
+      match error.error_id {
+        ErrorType::DuplicateAlias(alias_id) => {
+          let alias = &runner.program.mech.store.names.get(&alias_id).unwrap();
+          println!(" Local table {:?} defined more than once.", alias);
+        },
+        _ => (),
+      }
+      println!("");
+      let (text, constraints) = &block.constraints[error.constraint - 1];
+      for constraint in constraints {
+        println!(" > {:?}", constraint);
+      }
+      println!("\n{}", BrightYellow.paint("----------------------------------------------------\n"));
     }
-    println!("{:?}", &runner.program.mech);
+    println!("{}{}{} Starting run loop.", BrightCyan.paint("["), BrightCyan.paint(&runner.name), BrightCyan.paint("]"));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
