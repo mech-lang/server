@@ -18,5 +18,5 @@ serde_json = "1.0.17"
 bincode = "0.8"
 walkdir = "1.0"
 mech-program = {git = "https://gitlab.com/mech-lang/program"}
-mech-core = {git = "https://gitlab.com/mech-lang/core"}
-mech-syntax = {git = "https://gitlab.com/mech-lang/syntax"}
+mech-core = "0.0.1"
+mech-syntax = "0.0.1"
