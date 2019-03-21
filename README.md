@@ -11,7 +11,12 @@ Mech Server is the way most users will work with Mech. It hosts a websocket serv
 ## Contents
 
 - client - defines a protocol for accepting messages from websocket clients, and a `ClientHandler` that implements this protocol.
-- program - defines a `Program`, which starts a Mech core on an OS thread; and a `Program Runner`, which marshalls messages to and from that thread.
+
+## Project Status
+
+Mech is currently in the **alpha** stage of development. This means that while some features work and are tested, programs are still likely to crash and produce incorrect results. We've implemented some language features, but many are not yet implemented.
+
+Feel free to use the language for your own satisfaction, but please don't use it for anything important.
 
 ## License
 
