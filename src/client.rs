@@ -29,18 +29,18 @@ pub enum ClientMessage {
 
 pub struct ClientHandler {
   client_name: String,
-  out: WSSender,
-  running: RunLoop,
+  out: Option<WSSender>,
+  pub running: RunLoop,
 }
 
 impl ClientHandler {
-  pub fn new(client_name: &str, out: WSSender, mech_paths: &Vec<&str>, persistence_path: &str) -> ClientHandler {
+  pub fn new(client_name: &str, out: Option<WSSender>, mech_paths: Option<&Vec<&str>>, persistence_path: Option<&str>) -> ClientHandler {
     let mut runner = ProgramRunner::new(client_name, 1500000);
     let outgoing = runner.program.outgoing.clone();
     // Load programs from supplied directories
     // Read the supplied paths for valid mech files
     let mut paths = Vec::new();
-    for path in mech_paths {
+    for path in mech_paths.unwrap_or(&vec![]) {
       let metadata = fs::metadata(path).expect(&format!("Invalid path: {:?}", path));
       if metadata.is_file() {
           paths.push(path.to_string());
