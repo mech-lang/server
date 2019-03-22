@@ -18,7 +18,7 @@ use walkdir::WalkDir;
 // ## Client Message
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum ClientMessage {
+pub enum WebsocketClientMessage {
   Control { kind: u8 },
   Code { code: String },
   RemoveBlock { id: String },
@@ -28,7 +28,7 @@ pub enum ClientMessage {
 // ## Client Handler
 
 pub struct ClientHandler {
-  client_name: String,
+  pub client_name: String,
   out: Option<WSSender>,
   pub running: RunLoop,
 }
@@ -68,7 +68,8 @@ impl ClientHandler {
         runner.load_program(contents);
     }
     // Print errors
-    println!("\nFound {} Errors:\n", &runner.program.errors.len());
+    let error_notice = format!("Found {} Errors:", &runner.program.errors.len());
+    println!("\n{}\n", Red.paint(error_notice));
     for error in &runner.program.errors {
       let block = &runner.program.mech.runtime.blocks.get(&(error.block as usize)).unwrap();
       println!("{} {} {} {}\n ", BrightYellow.paint("--"), Yellow.paint("Block"), block.name, BrightYellow.paint("---------------------------------------"));
@@ -86,7 +87,7 @@ impl ClientHandler {
       }
       println!("\n{}", BrightYellow.paint("----------------------------------------------------\n"));
     }
-    println!("{}{}{} Starting run loop.", BrightCyan.paint("["), BrightCyan.paint(&runner.name), BrightCyan.paint("]"));
+    println!("{} Starting run loop.", BrightCyan.paint(format!("[{}]", client_name)));
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running}
   }
@@ -107,16 +108,16 @@ impl Handler for ClientHandler {
  fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
     //println!("Server got message '{}'. ", msg);
     if let Message::Text(s) = msg {
-      let deserialized: Result<ClientMessage, Error> = serde_json::from_str(&s);
+      let deserialized: Result<WebsocketClientMessage, Error> = serde_json::from_str(&s);
       //println!("deserialized = {:?}", deserialized);
       match deserialized {
-          Ok(ClientMessage::Transaction { adds, removes }) => {
+          Ok(WebsocketClientMessage::Transaction { adds, removes }) => {
             //println!("Txn: {:?} {:?}", adds, removes);
             let txn = from_adds_removes(adds, removes);
             //println!("{:?}", txn);
             self.running.send(RunLoopMessage::Transaction(txn));
           },
-          Ok(ClientMessage::Control{kind}) => {
+          Ok(WebsocketClientMessage::Control{kind}) => {
             match kind {
               1 => self.running.send(RunLoopMessage::Clear),
               2 => self.running.send(RunLoopMessage::Stop),
@@ -127,7 +128,7 @@ impl Handler for ClientHandler {
               _ => Err("Unknown client message"),
             };
           },
-          Ok(ClientMessage::Code{code}) => {
+          Ok(WebsocketClientMessage::Code{code}) => {
             self.running.send(RunLoopMessage::Code(code));
           },
           Ok(m) => println!("Unhandled Websocket Message: {:?}", m),
