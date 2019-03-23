@@ -68,24 +68,26 @@ impl ClientHandler {
         runner.load_program(contents);
     }
     // Print errors
-    let error_notice = format!("Found {} Errors:", &runner.program.errors.len());
-    println!("\n{}\n", Red.paint(error_notice));
-    for error in &runner.program.errors {
-      let block = &runner.program.mech.runtime.blocks.get(&(error.block as usize)).unwrap();
-      println!("{} {} {} {}\n ", BrightYellow.paint("--"), Yellow.paint("Block"), block.name, BrightYellow.paint("---------------------------------------"));
-      match error.error_id {
-        ErrorType::DuplicateAlias(alias_id) => {
-          let alias = &runner.program.mech.store.names.get(&alias_id).unwrap();
-          println!(" Local table {:?} defined more than once.", alias);
-        },
-        _ => (),
+    if runner.program.errors.len() > 0 {
+      let error_notice = format!("Found {} Errors:", &runner.program.errors.len());
+      println!("\n{}\n", Red.paint(error_notice));
+      for error in &runner.program.errors {
+        let block = &runner.program.mech.runtime.blocks.get(&(error.block as usize)).unwrap();
+        println!("{} {} {} {}\n ", BrightYellow.paint("--"), Yellow.paint("Block"), block.name, BrightYellow.paint("---------------------------------------"));
+        match error.error_id {
+          ErrorType::DuplicateAlias(alias_id) => {
+            let alias = &runner.program.mech.store.names.get(&alias_id).unwrap();
+            println!(" Local table {:?} defined more than once.", alias);
+          },
+          _ => (),
+        }
+        println!("");
+        let (text, constraints) = &block.constraints[error.constraint - 1];
+        for constraint in constraints {
+          println!(" > {:?}", constraint);
+        }
+        println!("\n{}", BrightYellow.paint("----------------------------------------------------\n"));
       }
-      println!("");
-      let (text, constraints) = &block.constraints[error.constraint - 1];
-      for constraint in constraints {
-        println!(" > {:?}", constraint);
-      }
-      println!("\n{}", BrightYellow.paint("----------------------------------------------------\n"));
     }
     println!("{} Starting run loop.", BrightCyan.paint(format!("[{}]", client_name)));
     let running = runner.run();
