@@ -8,7 +8,7 @@ use serde_json::{Error};
 use std::fs::{self, File};
 use std::io::Read;
 
-use mech_program::{ProgramRunner, RunLoop, RunLoopMessage};
+use mech_program::{ProgramRunner, RunLoop, RunLoopMessage, ClientMessage};
 use mech_core::{Core, Change, Transaction, Value, Index, ErrorType};
 use term_painter::ToStyle;
 use term_painter::Color::*;
@@ -19,9 +19,10 @@ use walkdir::WalkDir;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WebsocketClientMessage {
-  Control { kind: u8 },
-  Code { code: String },
-  RemoveBlock { id: String },
+  Control(u8),
+  Code(String),
+  Table(usize),
+  RemoveBlock(usize),
   Transaction { adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)> },
 }
 
@@ -108,10 +109,44 @@ impl Handler for ClientHandler {
   }
 
  fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
-    //println!("Server got message '{}'. ", msg);
+
+    match msg {
+      Message::Text(s) => {
+        let deserialized: Result<WebsocketClientMessage, Error> = serde_json::from_str(&s);
+        match deserialized {
+          Ok(WebsocketClientMessage::Table(table_id)) => {
+            self.running.send(RunLoopMessage::Table(table_id as u64));
+          },
+          _ => (),
+        }
+      },
+      _ => (),
+    }
+
+    match self.running.receive() {
+      (Ok(ClientMessage::Table(table))) => {
+        match table {
+          Some(ref table_ref) => {
+            println!("{:?}", table_ref);
+            match &self.out {
+              Some(out) => {
+                let table_json = serde_json::to_string(&table_ref.data).unwrap();
+                out.send(Message::Text(table_json)).unwrap();
+              }
+              _ => (),
+            }
+          },
+          None => (),
+        }
+      },
+      _ => (),
+    }
+
+    Ok(())
+    /*
     if let Message::Text(s) = msg {
       let deserialized: Result<WebsocketClientMessage, Error> = serde_json::from_str(&s);
-      //println!("deserialized = {:?}", deserialized);
+      println!("deserialized = {:?}", deserialized);
       match deserialized {
           Ok(WebsocketClientMessage::Transaction { adds, removes }) => {
             //println!("Txn: {:?} {:?}", adds, removes);
@@ -119,7 +154,7 @@ impl Handler for ClientHandler {
             //println!("{:?}", txn);
             self.running.send(RunLoopMessage::Transaction(txn));
           },
-          Ok(WebsocketClientMessage::Control{kind}) => {
+          Ok(WebsocketClientMessage::Control(kind)) => {
             match kind {
               1 => self.running.send(RunLoopMessage::Clear),
               2 => self.running.send(RunLoopMessage::Stop),
@@ -130,7 +165,7 @@ impl Handler for ClientHandler {
               _ => Err("Unknown client message"),
             };
           },
-          Ok(WebsocketClientMessage::Code{code}) => {
+          Ok(WebsocketClientMessage::Code(code)) => {
             self.running.send(RunLoopMessage::Code(code));
           },
           Ok(m) => println!("Unhandled Websocket Message: {:?}", m),
@@ -139,11 +174,11 @@ impl Handler for ClientHandler {
         Ok(())
     } else {
       Ok(())
-    }
+    }*/
   }
 
   fn on_close(&mut self, code: CloseCode, reason: &str) {
-    //println!("WebSocket closing for ({:?}) {}", code, reason);
+    println!("WebSocket closing for ({:?}) {}", code, reason);
     //self.router.lock().unwrap().unregister(&self.client_name);
     self.running.close();
   }
