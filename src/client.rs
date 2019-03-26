@@ -127,7 +127,6 @@ impl Handler for ClientHandler {
       (Ok(ClientMessage::Table(table))) => {
         match table {
           Some(ref table_ref) => {
-            println!("{:?}", table_ref);
             match &self.out {
               Some(out) => {
                 let table_json = serde_json::to_string(&table_ref.data).unwrap();
