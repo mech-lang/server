@@ -8,7 +8,7 @@ Read about progress on our [blog](https://mech-lang.org/blog/), follow us on Twi
 
 # Mech Server
 
-Provides a server and client ofr hosting Mech programs on a websocket.
+Provides a server and client for hosting Mech programs on a websocket.
 
 ## Contents
 
