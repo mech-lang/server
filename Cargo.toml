@@ -2,7 +2,7 @@
 name = "mech-server"
 version = "0.0.1"
 authors = ["Corey Montella <corey@mech-lang.org>"]
-description = "Provides a server and client ofr hosting Mech programs on a websocket."
+description = "Provides a server and client for hosting Mech programs on a websocket."
 documentation = "https://mech-lang.org/page/learn/"
 homepage = "https://mech-lang.org"
 repository = "https://github.com/mech-lang/server"
