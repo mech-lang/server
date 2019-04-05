@@ -83,11 +83,14 @@ impl ClientHandler {
           _ => (),
         }
         println!("");
-        let (text, constraints) = &block.constraints[error.constraint - 1];
-        for constraint in constraints {
-          println!(" > {:?}", constraint);
+        for (ix,(text,_)) in block.constraints.iter().enumerate() {
+          if ix == error.constraint - 1 {
+            println!(" {} {}", Red.paint(">"), text);
+          } else {
+            println!("   {}", BrightBlack.paint(text));
+          }
         }
-        println!("\n{}", BrightYellow.paint("----------------------------------------------------\n"));
+        println!("\n{}", BrightYellow.paint("------------------------------------------------------\n"));
       }
     }
     println!("{} Starting run loop.", BrightCyan.paint(format!("[{}]", client_name)));
