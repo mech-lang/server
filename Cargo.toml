@@ -33,3 +33,4 @@ walkdir = "1.0"
 mech-program = {git = "https://gitlab.com/mech-lang/program"}
 mech-core = {git = "https://gitlab.com/mech-lang/core"}
 mech-syntax = {git = "https://gitlab.com/mech-lang/syntax"}
+mech-wasm = {git = "https://gitlab.com/mech-lang/wasm"}

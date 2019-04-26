@@ -10,23 +10,12 @@ use std::io::Read;
 
 use mech_program::{ProgramRunner, RunLoop, RunLoopMessage, ClientMessage};
 use mech_core::{Core, Change, Transaction, Value, Index, ErrorType};
+use mech_wasm::WebsocketClientMessage;
 use term_painter::ToStyle;
 use term_painter::Color::*;
 use hashbrown::hash_set::HashSet;
 
 use walkdir::WalkDir;
-
-// ## Client Message
-
-#[derive(Serialize, Deserialize, Debug)]
-pub enum WebsocketClientMessage {
-  Listening(Vec<u64>),
-  Control(u8),
-  Code(String),
-  Table(usize),
-  RemoveBlock(usize),
-  Transaction(Transaction),
-}
 
 // ## Client Handler
 
@@ -134,10 +123,11 @@ impl Handler for ClientHandler {
     
     match msg {
       Message::Text(s) => {
-        let deserialized: Result<Transaction, Error> = serde_json::from_str(&s);
+        let deserialized: Result<WebsocketClientMessage, Error> = serde_json::from_str(&s);
         match deserialized {
-          Ok(txn) => {
-            println!("{:?}", txn);
+          Ok(WebsocketClientMessage::Transaction(txn)) => {
+            //println!("{:?}", txn);
+            self.running.send(RunLoopMessage::Transaction(txn));
           },
           _ => (),
         }
