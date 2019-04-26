@@ -24,6 +24,8 @@ extern crate serde_json;
 extern crate serde;
 use serde_json::{Error};
 
+extern crate hashbrown;
+
 extern crate time;
 use std::time::Duration;
 
