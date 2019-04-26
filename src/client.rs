@@ -101,9 +101,9 @@ impl Handler for ClientHandler {
   fn on_open(&mut self, handshake: Handshake) -> Result<(),ws::Error> {
     let mut input = Vec::new();
     for input_reg in &self.input {
-      input.push(input_reg);
+      input.push(input_reg.clone());
     }
-    let json_msg = serde_json::to_string(&input).unwrap();
+    let json_msg = serde_json::to_string(&WebsocketClientMessage::Listening(input)).unwrap();
     match &self.out {
       Some(out) => {
         out.send(Message::Text(json_msg)).unwrap();
@@ -126,32 +126,20 @@ impl Handler for ClientHandler {
         let deserialized: Result<WebsocketClientMessage, Error> = serde_json::from_str(&s);
         match deserialized {
           Ok(WebsocketClientMessage::Transaction(txn)) => {
-            //println!("{:?}", txn);
             self.running.send(RunLoopMessage::Transaction(txn));
           },
+          Ok(WebsocketClientMessage::Listening(table_ids)) => {
+            self.running.send(RunLoopMessage::Listening(table_ids));
+          },
+          Err(error) => println!("Error: {:?}", error),
           _ => (),
         }
       },
       _ => (),
     }
 
-    /*
-    match msg {
-      Message::Text(s) => {
-        let deserialized: Result<WebsocketClientMessage, Error> = serde_json::from_str(&s);
-        match deserialized {
-          Ok(WebsocketClientMessage::Table(table_id)) => {
-            self.running.send(RunLoopMessage::Table(table_id as u64));
-          },
-          _ => (),
-        }
-      },
-      _ => (),
-    }*/
-
-/*
     match self.running.receive() {
-      (Ok(ClientMessage::Table(table))) => {
+      /*(Ok(ClientMessage::Table(table))) => {
         match table {
           Some(ref table_ref) => {
             match &self.out {
@@ -164,10 +152,18 @@ impl Handler for ClientHandler {
           },
           None => (),
         }
-      },
+      },*/
+      Ok(ClientMessage::Transaction(txn)) => {
+        let txn_json = serde_json::to_string(&WebsocketClientMessage::Transaction(txn)).unwrap();
+        match &self.out {
+          Some(out) => {
+            out.send(Message::Text(txn_json)).unwrap();
+          }
+          _ => (),
+        }
+      }
       _ => (),
-    }*/
-
+    }
     Ok(())
     /*
     if let Message::Text(s) = msg {
