@@ -12,6 +12,7 @@ use mech_program::{ProgramRunner, RunLoop, RunLoopMessage, ClientMessage};
 use mech_core::{Core, Change, Transaction, Value, Index, ErrorType};
 use term_painter::ToStyle;
 use term_painter::Color::*;
+use hashbrown::hash_set::HashSet;
 
 use walkdir::WalkDir;
 
@@ -19,11 +20,12 @@ use walkdir::WalkDir;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum WebsocketClientMessage {
+  Listening(Vec<u64>),
   Control(u8),
   Code(String),
   Table(usize),
   RemoveBlock(usize),
-  Transaction { adds: Vec<(u64, u64, u64, i64)>, removes: Vec<(u64, u64, u64, i64)> },
+  Transaction(Transaction),
 }
 
 // ## Client Handler
@@ -32,6 +34,7 @@ pub struct ClientHandler {
   pub client_name: String,
   out: Option<WSSender>,
   pub running: RunLoop,
+  pub input: HashSet<u64>,
 }
 
 impl ClientHandler {
@@ -93,16 +96,32 @@ impl ClientHandler {
         println!("\n{}", BrightYellow.paint("------------------------------------------------------\n"));
       }
     }
+    // register input
+    let mut input = HashSet::new();
+    for input_register in runner.program.mech.input.iter() {
+      input.insert(input_register.table);
+    }
     println!("{} Starting run loop.", BrightCyan.paint(format!("[{}]", client_name)));
     let running = runner.run();
-    ClientHandler {client_name: client_name.to_owned(), out, running}
+    ClientHandler {client_name: client_name.to_owned(), out, running, input}
   }
 }
 
 impl Handler for ClientHandler {
 
   fn on_open(&mut self, handshake: Handshake) -> Result<(),ws::Error> {
-    //println!("Connection Opened: {:?}", handshake);
+    let mut input = Vec::new();
+    for input_reg in &self.input {
+      input.push(input_reg);
+    }
+    let json_msg = serde_json::to_string(&input).unwrap();
+    match &self.out {
+      Some(out) => {
+        out.send(Message::Text(json_msg)).unwrap();
+      }
+      _ => (),
+    }
+    
     Ok(())
   }
 
@@ -111,8 +130,22 @@ impl Handler for ClientHandler {
     ws::Response::from_request(req)
   }
 
- fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
+  fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
+    
+    match msg {
+      Message::Text(s) => {
+        let deserialized: Result<Transaction, Error> = serde_json::from_str(&s);
+        match deserialized {
+          Ok(txn) => {
+            println!("{:?}", txn);
+          },
+          _ => (),
+        }
+      },
+      _ => (),
+    }
 
+    /*
     match msg {
       Message::Text(s) => {
         let deserialized: Result<WebsocketClientMessage, Error> = serde_json::from_str(&s);
@@ -124,8 +157,9 @@ impl Handler for ClientHandler {
         }
       },
       _ => (),
-    }
+    }*/
 
+/*
     match self.running.receive() {
       (Ok(ClientMessage::Table(table))) => {
         match table {
@@ -142,7 +176,7 @@ impl Handler for ClientHandler {
         }
       },
       _ => (),
-    }
+    }*/
 
     Ok(())
     /*
