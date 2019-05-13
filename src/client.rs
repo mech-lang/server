@@ -75,8 +75,8 @@ impl ClientHandler {
           _ => (),
         }
         println!("");
-        for (ix,(text,_)) in block.constraints.iter().enumerate() {
-          if ix == error.constraint - 1 {
+        for (ix,(text, constraints)) in block.constraints.iter().enumerate() {
+          if constraints.contains(&error.constraint) {
             println!(" {} {}", Red.paint(">"), text);
           } else {
             println!("   {}", BrightBlack.paint(text));
