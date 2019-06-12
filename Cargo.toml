@@ -16,7 +16,7 @@ gitlab = { repository = "mech-lang/server", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-hashbrown = "0.1.8"
+hashbrown = "0.4.0"
 time = "0.1.39"
 rand = "0.4.2"
 iron = "0.6.0"
