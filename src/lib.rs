@@ -49,7 +49,6 @@ use self::term_painter::Color::*;
 extern crate mech_core;
 extern crate mech_syntax;
 extern crate mech_program;
-extern crate mech_wasm;
 use mech_core::{Core, Change, Transaction};
 use mech_core::Value;
 use mech_core::{TableIndex, Hasher};
@@ -68,6 +67,18 @@ use walkdir::WalkDir;
 // ## Modules
 
 pub mod client;
+
+// ## Client Message
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum WebsocketClientMessage {
+  Listening(Vec<u64>),
+  Control(u8),
+  Code(String),
+  Table(usize),
+  RemoveBlock(usize),
+  Transaction(Transaction),
+}
 
 // ## Static File Server
 
