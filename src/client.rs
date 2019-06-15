@@ -10,7 +10,7 @@ use std::io::Read;
 
 use mech_program::{ProgramRunner, RunLoop, RunLoopMessage, ClientMessage};
 use mech_core::{Core, Change, Transaction, Value, Index, ErrorType};
-use ::WebsocketClientMessage;
+use mech_utilities::WebsocketClientMessage;
 use term_painter::ToStyle;
 use term_painter::Color::*;
 use hashbrown::hash_set::HashSet;

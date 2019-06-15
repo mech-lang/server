@@ -33,3 +33,4 @@ walkdir = "1.0"
 mech-program = "0.0.2"
 mech-core = "0.0.2"
 mech-syntax = "0.0.2"
+mech-utilities = {path = "../utilities"}
