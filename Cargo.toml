@@ -16,7 +16,7 @@ gitlab = { repository = "mech-lang/server", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-hashbrown = "0.4.0"
+hashbrown = "0.6.0"
 time = "0.1.39"
 rand = "0.4.2"
 iron = "0.6.0"
@@ -30,7 +30,7 @@ serde_derive = "1.0.96"
 serde_json = "1.0.17"
 bincode = "0.8"
 walkdir = "1.0"
-mech-program = "0.0.2"
-mech-core = "0.0.2"
-mech-syntax = "0.0.2"
+mech-program = {git = "https://gitlab.com/mech-lang/program"}
+mech-core = {git = "https://gitlab.com/mech-lang/core"}
+mech-syntax = {git = "https://gitlab.com/mech-lang/syntax"}
 mech-utilities = {git = "https://gitlab.com/mech-lang/utilities"}
