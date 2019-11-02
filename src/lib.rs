@@ -56,7 +56,7 @@ use mech_core::{TableIndex, Hasher};
 use mech_core::{Block, Constraint};
 use mech_core::{Function, Comparator};
 use mech_program::{ProgramRunner, RunLoop};
-use mech_utilities::{RunLoopMessage}
+use mech_utilities::{RunLoopMessage};
 
 use self::client::ClientHandler;
 
