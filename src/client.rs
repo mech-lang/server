@@ -9,7 +9,7 @@ use std::fs::{self, File};
 use std::io::Read;
 
 use mech_program::{ProgramRunner, RunLoop, ClientMessage};
-use mech_core::{Core, Change, Transaction, Value, Index, ErrorType};
+use mech_core::{TableId, Core, Change, Transaction, Value, Index, ErrorType};
 use mech_utilities::{WebsocketClientMessage, RunLoopMessage};
 use term_painter::ToStyle;
 use term_painter::Color::*;
@@ -23,7 +23,7 @@ pub struct ClientHandler {
   pub client_name: String,
   out: Option<WSSender>,
   pub running: RunLoop,
-  pub input: HashSet<u64>,
+  pub input: HashSet<TableId>,
 }
 
 impl ClientHandler {
