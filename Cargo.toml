@@ -1,6 +1,6 @@
 [package]
 name = "mech-server"
-version = "0.0.3"
+version = "0.0.4"
 authors = ["Corey Montella <corey@mech-lang.org>"]
 description = "Provides a server and client for hosting Mech programs on a websocket."
 documentation = "http://docs.mech-lang.org"
@@ -16,21 +16,22 @@ gitlab = { repository = "mech-lang/server", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-hashbrown = "0.6.0"
+mech-program = "0.0.4"
+mech-core = "0.0.4"
+mech-syntax = "0.0.4"
+mech-utilities = "0.0.4"
+
+hashbrown = "0.7.1"
 time = "0.1.39"
 rand = "0.4.2"
-iron = "0.6.0"
-clap = "2.31.2"
+iron = "0.6.1"
+clap = "2.33.0"
 term-painter = "0.2.4"
 staticfile = "0.5"
 mount = "0.4"
-ws = "0.7.6"
-serde = "1.0.96"
-serde_derive = "1.0.96"
-serde_json = "1.0.17"
-bincode = "0.8"
+ws = "0.9.1"
+serde = "1.0.105"
+serde_derive = "1.0.105"
+serde_json = "1.0.50"
+bincode = "1.2.1"
 walkdir = "1.0"
-mech-program = {git = "https://gitlab.com/mech-lang/program"}
-mech-core = {git = "https://gitlab.com/mech-lang/core"}
-mech-syntax = {git = "https://gitlab.com/mech-lang/syntax"}
-mech-utilities = {git = "https://gitlab.com/mech-lang/utilities"}
