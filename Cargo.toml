@@ -16,10 +16,10 @@ gitlab = { repository = "mech-lang/server", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-mech-program = "0.0.4"
-mech-core = "0.0.4"
-mech-syntax = "0.0.4"
-mech-utilities = "0.0.4"
+mech-core = {git= "https://gitlab.com/mech-lang/core"}
+mech-syntax = {git= "https://gitlab.com/mech-lang/syntax"}
+mech-program = {git= "https://gitlab.com/mech-lang/program"}
+mech-utilities = {git= "https://gitlab.com/mech-lang/utilities"}
 
 hashbrown = "0.7.1"
 time = "0.1.39"
