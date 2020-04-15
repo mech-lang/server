@@ -27,7 +27,7 @@ pub struct ClientHandler {
 }
 
 impl ClientHandler {
-  pub fn new(client_name: &str, out: Option<WSSender>, mech_paths: Option<&Vec<&str>>, persistence_path: Option<&str>) -> ClientHandler {
+  pub fn new(client_name: &str, out: Option<WSSender>, mech_paths: Option<&Vec<&str>>, persistence_path: Option<&str>, cores: Option<Vec<Core>>) -> ClientHandler {
     let mut runner = ProgramRunner::new(client_name, 1500000);
     let outgoing = runner.program.outgoing.clone();
     // Load programs from supplied directories
@@ -60,6 +60,12 @@ impl ClientHandler {
         file.read_to_string(&mut contents).expect("Unable to read the file");
         runner.load_program(contents);
     }
+
+    // Load supplied cores
+    for core in cores.unwrap_or(vec![]) {
+      runner.load_core(core);
+    }
+
     // Print errors
     if runner.program.errors.len() > 0 {
       let error_notice = format!("Found {} Errors:", &runner.program.errors.len());

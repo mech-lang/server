@@ -106,7 +106,7 @@ pub fn websocket_server(address: String, mech_paths: Vec<&str>, persistence_path
   match listen(address, |out| {
     ix += 1;
     let client_name = format!("ws_client_{}", ix);
-    ClientHandler::new(&client_name, Some(out), Some(&mech_paths), Some(&persistence_path))
+    ClientHandler::new(&client_name, Some(out), Some(&mech_paths), Some(&persistence_path), None)
   }) {
     Ok(_) => {},
     Err(why) => println!("{} Failed to start Websocket Server: {}", BrightRed.paint("Error:"), why),
