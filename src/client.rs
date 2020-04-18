@@ -97,7 +97,6 @@ impl ClientHandler {
       input.insert(input_register.table);
     }
     println!("{} Starting run loop.", BrightCyan.paint(format!("[{}]", client_name)));
-    runner.download_dependencies();
     let running = runner.run();
     ClientHandler {client_name: client_name.to_owned(), out, running, input}
   }
